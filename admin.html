@@ -7,15 +7,12 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #1a1a1b; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        h1 { border-bottom: 3px solid #3498db; padding-bottom: 15px; color: #2c3e50; margin-top: 0; }
-        .device-card { 
-            display: flex; align-items: center; justify-content: space-between; 
-            padding: 20px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px;
-        }
+        h1 { border-bottom: 3px solid #3498db; padding-bottom: 15px; color: #2c3e50; }
+        .device-card { display: flex; align-items: center; justify-content: space-between; padding: 20px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px; transition: 0.3s; }
         .device-card.success { border-color: #2ecc71; background-color: #fafffb; }
         .device-card.error { border-color: #e74c3c; background-color: #fffafa; }
         .device-info { display: flex; flex-direction: column; }
-        .device-name { font-weight: bold; font-size: 16px; }
+        .device-name { font-weight: bold; }
         .device-id { font-size: 12px; color: #95a5a6; }
         .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -28,7 +25,7 @@
 <body>
     <div class="container">
         <h1>Gestion de la Flotte</h1>
-        <div id="device-list">Chargement des appareils...</div>
+        <div id="device-list">Chargement...</div>
     </div>
 
     <script>
@@ -43,20 +40,19 @@
                 list.innerHTML = '';
 
                 devices.forEach(dev => {
-                    // On s'assure que l'ID est bien traité comme un texte propre
-                    const idString = String(dev.id).split(':')[0];
+                    const cleanId = String(dev.id).split(':')[0];
                     const isVisible = dev.attributes && dev.attributes.showOnPublicMap === true;
                     
                     const div = document.createElement('div');
                     div.className = 'device-card';
-                    div.id = `card-${idString}`;
+                    div.id = `card-${cleanId}`;
                     div.innerHTML = `
                         <div class="device-info">
                             <span class="device-name">${dev.name}</span>
-                            <span class="device-id">ID: ${idString}</span>
+                            <span class="device-id">ID: ${cleanId}</span>
                         </div>
                         <label class="switch">
-                            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleDevice('${idString}', this.checked)">
+                            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleDevice('${cleanId}', this.checked)">
                             <span class="slider"></span>
                         </label>
                     `;
@@ -65,46 +61,58 @@
             } catch (e) { console.error(e); }
         }
 
-        async function toggleDevice(rawId, isChecked) {
-            // NETTOYAGE ABSOLU : On ne garde que les chiffres
-            const cleanId = rawId.replace(/\D/g, ''); 
-            const card = document.getElementById(`card-${cleanId}`);
-
-            console.log("Tentative de mise à jour pour l'ID nettoyé :", cleanId);
+        async function toggleDevice(idInput, isChecked) {
+            const deviceId = idInput.replace(/\D/g, ''); 
+            const card = document.getElementById(`card-${deviceId}`);
 
             try {
-                // 1. Récupération des données
+                // 1. Récupérer l'appareil complet
                 const resGet = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
                 const devices = await resGet.json();
-                
-                // On cherche le device dont l'ID (nettoyé) correspond
-                const device = devices.find(d => String(d.id).replace(/\D/g, '') === cleanId);
+                const device = devices.find(d => String(d.id).replace(/\D/g, '') === deviceId);
 
-                if (!device) throw new Error("Navette introuvable");
+                if (!device) throw new Error("Appareil introuvable");
 
-                // 2. Mise à jour de l'attribut
-                if (!device.attributes) device.attributes = {};
-                device.attributes.showOnPublicMap = isChecked;
+                // 2. Préparer un objet "propre" pour Traccar
+                // On ne garde que les champs essentiels pour éviter l'erreur 400
+                const updatedDevice = {
+                    id: device.id,
+                    name: device.name,
+                    uniqueId: device.uniqueId,
+                    status: device.status,
+                    disabled: device.disabled,
+                    lastUpdate: device.lastUpdate,
+                    positionId: device.positionId,
+                    groupId: device.groupId,
+                    phone: device.phone,
+                    model: device.model,
+                    contact: device.contact,
+                    category: device.category,
+                    attributes: { ...device.attributes, showOnPublicMap: isChecked }
+                };
 
-                // 3. Envoi au serveur (URL garantie sans :1)
-                const resPut = await fetch(`${TRACCAR_URL}/api/devices/${cleanId}`, {
+                // 3. Envoi au serveur
+                const resPut = await fetch(`${TRACCAR_URL}/api/devices/${deviceId}`, {
                     method: 'PUT',
-                    headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(device)
+                    headers: { 
+                        'Authorization': AUTH, 
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify(updatedDevice)
                 });
 
                 if (resPut.ok) {
                     card.classList.add('success');
                     setTimeout(() => card.classList.remove('success'), 1000);
-                    console.log("✅ Mise à jour réussie !");
+                    console.log("✅ Mis à jour !");
                 } else {
-                    const errorMsg = await resPut.text();
-                    throw new Error("Serveur : " + errorMsg);
+                    const errorText = await resPut.text();
+                    throw new Error(errorText || resPut.status);
                 }
             } catch (err) {
-                console.error("❌ Erreur :", err);
+                console.error("❌ Erreur:", err);
                 card.classList.add('error');
-                alert("Erreur : " + err.message);
+                alert("Erreur serveur : " + err.message);
                 setTimeout(() => card.classList.remove('error'), 2000);
             }
         }
