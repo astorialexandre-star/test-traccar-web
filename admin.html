@@ -11,15 +11,12 @@
         .device-card { 
             display: flex; align-items: center; justify-content: space-between; 
             padding: 20px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px;
-            transition: all 0.3s ease;
         }
         .device-card.success { border-color: #2ecc71; background-color: #fafffb; }
         .device-card.error { border-color: #e74c3c; background-color: #fffafa; }
         .device-info { display: flex; flex-direction: column; }
         .device-name { font-weight: bold; font-size: 16px; }
         .device-id { font-size: 12px; color: #95a5a6; }
-        
-        /* Style du Bouton Switch */
         .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
@@ -31,7 +28,6 @@
 <body>
     <div class="container">
         <h1>Gestion de la Flotte</h1>
-        <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 25px;">Sélectionnez les navettes à afficher sur la carte publique.</p>
         <div id="device-list">Chargement des appareils...</div>
     </div>
 
@@ -47,68 +43,68 @@
                 list.innerHTML = '';
 
                 devices.forEach(dev => {
-                    // Nettoyage de l'ID pour l'affichage et les fonctions
-                    const cleanId = dev.id.toString().split(':')[0];
+                    // On s'assure que l'ID est bien traité comme un texte propre
+                    const idString = String(dev.id).split(':')[0];
                     const isVisible = dev.attributes && dev.attributes.showOnPublicMap === true;
                     
                     const div = document.createElement('div');
                     div.className = 'device-card';
-                    div.id = `card-${cleanId}`;
+                    div.id = `card-${idString}`;
                     div.innerHTML = `
                         <div class="device-info">
                             <span class="device-name">${dev.name}</span>
-                            <span class="device-id">ID: ${cleanId}</span>
+                            <span class="device-id">ID: ${idString}</span>
                         </div>
                         <label class="switch">
-                            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleDevice('${cleanId}', this.checked)">
+                            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleDevice('${idString}', this.checked)">
                             <span class="slider"></span>
                         </label>
                     `;
                     list.appendChild(div);
                 });
-            } catch (e) { 
-                document.getElementById('device-list').innerHTML = "Erreur de connexion au serveur.";
-            }
+            } catch (e) { console.error(e); }
         }
 
-        async function toggleDevice(idInput, isChecked) {
-            // SECURITE CRITIQUE : Extraction forcée de l'identifiant numérique
-            const deviceId = idInput.toString().split(':')[0];
-            const card = document.getElementById(`card-${deviceId}`);
+        async function toggleDevice(rawId, isChecked) {
+            // NETTOYAGE ABSOLU : On ne garde que les chiffres
+            const cleanId = rawId.replace(/\D/g, ''); 
+            const card = document.getElementById(`card-${cleanId}`);
+
+            console.log("Tentative de mise à jour pour l'ID nettoyé :", cleanId);
 
             try {
-                // 1. Récupération de l'état actuel de l'appareil
+                // 1. Récupération des données
                 const resGet = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
                 const devices = await resGet.json();
-                const device = devices.find(d => d.id.toString().split(':')[0] === deviceId);
+                
+                // On cherche le device dont l'ID (nettoyé) correspond
+                const device = devices.find(d => String(d.id).replace(/\D/g, '') === cleanId);
 
-                if (!device) throw new Error("Appareil introuvable");
+                if (!device) throw new Error("Navette introuvable");
 
-                // 2. Mise à jour de l'attribut personnalisé
+                // 2. Mise à jour de l'attribut
                 if (!device.attributes) device.attributes = {};
                 device.attributes.showOnPublicMap = isChecked;
 
-                // 3. Envoi de la mise à jour avec l'URL nettoyée
-                const resPut = await fetch(`${TRACCAR_URL}/api/devices/${deviceId}`, {
+                // 3. Envoi au serveur (URL garantie sans :1)
+                const resPut = await fetch(`${TRACCAR_URL}/api/devices/${cleanId}`, {
                     method: 'PUT',
-                    headers: { 
-                        'Authorization': AUTH, 
-                        'Content-Type': 'application/json' 
-                    },
+                    headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
                     body: JSON.stringify(device)
                 });
 
                 if (resPut.ok) {
                     card.classList.add('success');
                     setTimeout(() => card.classList.remove('success'), 1000);
-                    console.log(`✅ Succès : Navette ${deviceId} mise à jour.`);
+                    console.log("✅ Mise à jour réussie !");
                 } else {
-                    throw new Error(`Erreur serveur : ${resPut.status}`);
+                    const errorMsg = await resPut.text();
+                    throw new Error("Serveur : " + errorMsg);
                 }
             } catch (err) {
-                console.error("❌ Échec de la mise à jour :", err);
+                console.error("❌ Erreur :", err);
                 card.classList.add('error');
-                alert("Impossible de mettre à jour la navette. Vérifiez la console.");
+                alert("Erreur : " + err.message);
                 setTimeout(() => card.classList.remove('error'), 2000);
             }
         }
