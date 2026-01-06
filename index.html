@@ -149,7 +149,6 @@
             const banner = document.getElementById('connection-banner');
             const speedEl = document.getElementById('speed-val');
 
-            // 1. Vérification des horaires
             if (h < 9 || h >= 23) {
                 document.getElementById('status-dot').style.backgroundColor = "#e74c3c";
                 document.getElementById('status-text').textContent = "SERVICE REPREND À 09h";
@@ -159,9 +158,9 @@
             }
 
             try {
-                // 2. Requête vers Traccar avec sécurité (Timeout 5s)
+                // Allongement du timeout à 8 secondes
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
 
                 const res = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${DEVICE_ID}`, { 
                     headers: { 'Authorization': AUTH },
@@ -170,7 +169,7 @@
                 
                 clearTimeout(timeoutId);
 
-                if (!res.ok) throw new Error("Réponse serveur : " + res.status);
+                if (!res.ok) throw new Error("Status: " + res.status);
 
                 const positions = await res.json();
                 
@@ -178,13 +177,14 @@
                     const p = positions[0];
                     lastNavLatLng = [p.latitude, p.longitude];
 
-                    // 3. Mise à jour Vitesse (convertie en km/h)
+                    // Mise à jour Vitesse
                     const speedKmH = Math.round(p.speed * 1.852); 
                     banner.innerHTML = `VITESSE : <span id="speed-val">${speedKmH}</span> km/h`;
                     banner.className = "status-sub-header status-ok";
                     document.getElementById('status-dot').style.backgroundColor = "#2ecc71";
+                    document.getElementById('status-text').textContent = "NAVETTE EN DIRECT";
 
-                    // 4. Mise à jour Marqueur Navette
+                    // Mise à jour Marqueur
                     const navIcon = L.icon({
                         iconUrl: 'images/logonavettebleu.png',
                         iconSize: [BUS_ICON_W, BUS_ICON_H],
@@ -195,19 +195,25 @@
                         navetteMarker = L.marker(lastNavLatLng, { icon: navIcon }).addTo(map);
                     } else {
                         navetteMarker.setLatLng(lastNavLatLng);
-                        navetteMarker.setIcon(navIcon);
                     }
+                } else {
+                    banner.innerHTML = "TRACCAR CONNECTÉ (ATTENTE DATA)";
+                    banner.className = "status-sub-header status-ok";
                 }
-            } catch (e) { 
-                console.error("Erreur Traccar:", e);
-                banner.innerHTML = "⚠️ ERREUR CONNEXION TRACCAR";
+            } // FIN DU BLOC TRY
+            catch (e) { 
+                console.error("Détail erreur:", e);
+                let msg = "ERREUR CONNEXION TRACCAR";
+                if (e.name === 'AbortError') msg = "⚠️ TIMEOUT RÉSEAU (LENT)";
+                
+                banner.innerHTML = msg;
                 banner.className = "status-sub-header status-error";
                 document.getElementById('status-dot').style.backgroundColor = "#7f8c8d";
                 document.getElementById('status-text').textContent = "TRACCAR HORS LIGNE";
-            }
+            } // FIN DU BLOC CATCH
         }
 
-        // --- FONCTIONS SECONDAIRES (Météo / Horloge) ---
+        // --- FONCTIONS SECONDAIRES ---
         async function updateWeather() {
             try {
                 const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.61&current_weather=true');
@@ -224,7 +230,6 @@
             document.getElementById('current-time').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // --- INTERVALLES & LANCEMENT ---
         setInterval(updatePosition, 3000); 
         setInterval(updateClock, 1000); 
         setInterval(updateWeather, 1800000); 
