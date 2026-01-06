@@ -10,7 +10,6 @@
         #map { height: 100vh; width: 100%; }
         body { margin: 0; padding: 0; overflow: hidden; background-color: #f4f4f4; }
         
-        /* Animation fluide pour le mouvement de la navette */
         .leaflet-marker-icon {
             transition: transform 1.5s linear, left 1.5s linear, top 1.5s linear;
         }
@@ -113,9 +112,9 @@
         const TRACCAR_URL = 'http://192.168.1.60:8082';
         const DEVICE_ID = '1';
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
-        const PROXIMITY_RADIUS = 100; // Alerte à 100 mètres
+        const PROXIMITY_RADIUS = 100; 
 
-        let autoCenter = true; // Mode suivi activé par défaut
+        let autoCenter = true; 
         const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
         let isAlertActive = false;
 
@@ -123,9 +122,8 @@
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 16);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Désactiver le suivi auto si l'utilisateur déplace la carte manuellement
-        map.on('movestart', (e) => {
-            if (e.hard) return; // Ignore si c'est un mouvement généré par le code
+        // Désactivation du suivi SEULEMENT sur interaction utilisateur réelle
+        map.on('mousedown touchstart', () => {
             autoCenter = false;
             updateBtnStyle();
         });
@@ -138,7 +136,9 @@
 
         function toggleAutoCenter() {
             autoCenter = !autoCenter;
-            if (autoCenter && lastNavLatLng) map.flyTo(lastNavLatLng, 17);
+            if (autoCenter && lastNavLatLng) {
+                map.flyTo(lastNavLatLng, 17);
+            }
             updateBtnStyle();
         }
 
@@ -156,6 +156,7 @@
                 { "type": "Feature", "geometry": { "type": "LineString", "coordinates": [[6.6293,45.8592],[6.6293,45.8590],[6.6293,45.8588],[6.6290,45.8587],[6.6280,45.8583],[6.6271,45.8581],[6.6267,45.8581],[6.6267,45.8582],[6.6269,45.8583],[6.6271,45.8585],[6.6273,45.8587],[6.6279,45.8589],[6.6280,45.8590],[6.6280,45.8592],[6.6278,45.8592],[6.6270,45.8591],[6.6268,45.8589],[6.6264,45.8586],[6.6261,45.8586],[6.6261,45.8588],[6.6267,45.8595],[6.6270,45.8598],[6.6272,45.8599],[6.6273,45.8602],[6.6274,45.8608],[6.6271,45.8606],[6.6268,45.8603],[6.6263,45.8602],[6.6256,45.8598],[6.6250,45.8593],[6.6243,45.8589],[6.6237,45.8584],[6.6225,45.8580],[6.6210,45.8576],[6.6207,45.8576]] } },
                 { "type": "Feature", "properties": { "name": "La Mamie", "icon": "images/logomamiemegeve.png" }, "geometry": { "type": "Point", "coordinates": [6.6291, 45.8593] } },
                 { "type": "Feature", "properties": { "name": "Mont d'Arbois", "icon": "images/logomontdarbois.png" }, "geometry": { "type": "Point", "coordinates": [6.6317, 45.8538] } },
+                { "type": "Feature", "properties": { "name": "Soleil d'Or", "icon": "images/logomontdarbois.png" }, "geometry": { "type": "Point", "coordinates": [6.6205, 45.8586] } },
                 { "type": "Feature", "properties": { "name": "L'Arboisie", "icon": "images/logolarboisie.png" }, "geometry": { "type": "Point", "coordinates": [6.6276, 45.8586] } }
             ]
         };
@@ -196,12 +197,12 @@
                         routeLine.setLatLngs(routePath);
                     }
 
-                    // Suivi automatique
+                    // CENTRAGE AUTOMATIQUE FLUIDE
                     if (autoCenter) {
-                        map.panTo(newPos, { animate: true, duration: 1.5, hard: true });
+                        map.panTo(newPos, { animate: true, duration: 1.5 });
                     }
 
-                    // Alertes Proximité & Son
+                    // Alertes Proximité
                     let alertText = `VITESSE : ${speedKmH} km/h`;
                     let inZone = false;
                     circuitData.features.forEach(f => {
