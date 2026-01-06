@@ -10,6 +10,7 @@
         #map { height: 100vh; width: 100%; }
         body { margin: 0; padding: 0; overflow: hidden; background-color: #f4f4f4; }
         
+        /* Animation fluide pour le mouvement de la navette */
         .leaflet-marker-icon {
             transition: transform 1.5s linear, left 1.5s linear, top 1.5s linear;
         }
@@ -61,9 +62,11 @@
             background: white; border: none; border-radius: 50%;
             width: 55px; height: 55px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
         }
-        #recenter-navette { background: #3388ff; }
-        #recenter-navette img { filter: invert(1); width: 26px; }
+        #recenter-navette.active { background: #3388ff; }
+        #recenter-navette.active img { filter: invert(1); }
+        .control-btn img { width: 26px; }
         
         .user-location-dot { width: 12px; height: 12px; background: #2196F3; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
         .dot { height: 12px; width: 12px; background-color: #2ecc71; border-radius: 50%; }
@@ -93,12 +96,12 @@
 
     <div class="map-controls">
         <button class="control-btn" onclick="clearRoute()" title="Effacer le tracé" style="background: #e74c3c;">
-            <img src="https://cdn-icons-png.flaticon.com/512/484/484611.png" style="width:24px; filter: invert(1);">
+            <img src="https://cdn-icons-png.flaticon.com/512/484/484611.png" style="filter: invert(1);">
         </button>
         <button class="control-btn" onclick="recenterUser()" title="Ma position">
-            <img src="https://cdn-icons-png.flaticon.com/512/9431/9431114.png" style="width:26px;">
+            <img src="https://cdn-icons-png.flaticon.com/512/9431/9431114.png">
         </button>
-        <button class="control-btn" id="recenter-navette" onclick="recenterNavette()" title="Suivre Navette">
+        <button class="control-btn active" id="recenter-navette" onclick="toggleAutoCenter()" title="Suivre Navette">
             <img src="https://cdn-icons-png.flaticon.com/512/2838/2838912.png">
         </button>
     </div>
@@ -110,18 +113,34 @@
         const TRACCAR_URL = 'http://192.168.1.60:8082';
         const DEVICE_ID = '1';
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
-        const PROXIMITY_RADIUS = 50; 
+        const PROXIMITY_RADIUS = 100; // Alerte à 100 mètres
 
-        const HOTEL_ICON_W = 80; const HOTEL_ICON_H = 80;  
-        const BUS_ICON_W = 90; const BUS_ICON_H = 90;
-
-        // Préparation du son
+        let autoCenter = true; // Mode suivi activé par défaut
         const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-        let isAlertActive = false; // Pour ne jouer le son qu'une fois à l'entrée de zone
+        let isAlertActive = false;
 
         // --- INITIALISATION CARTE ---
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 16);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        // Désactiver le suivi auto si l'utilisateur déplace la carte manuellement
+        map.on('movestart', (e) => {
+            if (e.hard) return; // Ignore si c'est un mouvement généré par le code
+            autoCenter = false;
+            updateBtnStyle();
+        });
+
+        function updateBtnStyle() {
+            const btn = document.getElementById('recenter-navette');
+            if(autoCenter) btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
+
+        function toggleAutoCenter() {
+            autoCenter = !autoCenter;
+            if (autoCenter && lastNavLatLng) map.flyTo(lastNavLatLng, 17);
+            updateBtnStyle();
+        }
 
         let userMarker;
         map.locate({watch: true, enableHighAccuracy: true});
@@ -130,33 +149,28 @@
             else userMarker.setLatLng(e.latlng);
         });
 
-        // --- DONNÉES CIRCUIT ET HÔTELS ---
+        // --- HÔTELS & CIRCUIT ---
         const circuitData = {
             "type": "FeatureCollection",
             "features": [
                 { "type": "Feature", "geometry": { "type": "LineString", "coordinates": [[6.6293,45.8592],[6.6293,45.8590],[6.6293,45.8588],[6.6290,45.8587],[6.6280,45.8583],[6.6271,45.8581],[6.6267,45.8581],[6.6267,45.8582],[6.6269,45.8583],[6.6271,45.8585],[6.6273,45.8587],[6.6279,45.8589],[6.6280,45.8590],[6.6280,45.8592],[6.6278,45.8592],[6.6270,45.8591],[6.6268,45.8589],[6.6264,45.8586],[6.6261,45.8586],[6.6261,45.8588],[6.6267,45.8595],[6.6270,45.8598],[6.6272,45.8599],[6.6273,45.8602],[6.6274,45.8608],[6.6271,45.8606],[6.6268,45.8603],[6.6263,45.8602],[6.6256,45.8598],[6.6250,45.8593],[6.6243,45.8589],[6.6237,45.8584],[6.6225,45.8580],[6.6210,45.8576],[6.6207,45.8576]] } },
                 { "type": "Feature", "properties": { "name": "La Mamie", "icon": "images/logomamiemegeve.png" }, "geometry": { "type": "Point", "coordinates": [6.6291, 45.8593] } },
                 { "type": "Feature", "properties": { "name": "Mont d'Arbois", "icon": "images/logomontdarbois.png" }, "geometry": { "type": "Point", "coordinates": [6.6317, 45.8538] } },
-                { "type": "Feature", "properties": { "name": "Soleil d'Or", "icon": "images/logomontdarbois.png" }, "geometry": { "type": "Point", "coordinates": [6.6205, 45.8586] } },
                 { "type": "Feature", "properties": { "name": "L'Arboisie", "icon": "images/logolarboisie.png" }, "geometry": { "type": "Point", "coordinates": [6.6276, 45.8586] } }
             ]
         };
 
         L.geoJSON(circuitData, {
             style: { color: '#3388ff', weight: 5, opacity: 0.4 },
-            pointToLayer: (f, latlng) => L.marker(latlng, { icon: L.icon({ iconUrl: f.properties.icon, iconSize: [HOTEL_ICON_W, HOTEL_ICON_H], iconAnchor: [HOTEL_ICON_W / 2, HOTEL_ICON_H] }) })
+            pointToLayer: (f, latlng) => L.marker(latlng, { icon: L.icon({ iconUrl: f.properties.icon, iconSize: [80, 80], iconAnchor: [40, 80] }) })
         }).addTo(map);
 
         // --- LOGIQUE NAVETTE ---
-        let navetteMarker;
-        let lastNavLatLng;
-        let routePath = []; 
+        let navetteMarker, lastNavLatLng, routePath = [];
         let routeLine = L.polyline([], {color: '#2ecc71', weight: 3, opacity: 0.7, dashArray: '5, 10'}).addTo(map);
 
-        function recenterUser() { if (userMarker) map.flyTo(userMarker.getLatLng(), 17, {duration: 1.5}); }
-        function recenterNavette() { if (lastNavLatLng) map.flyTo(lastNavLatLng, 17, {duration: 1.5}); }
+        function recenterUser() { if (userMarker) map.flyTo(userMarker.getLatLng(), 17); }
         function clearRoute() { if (confirm("Effacer le tracé ?")) { routePath = []; routeLine.setLatLngs([]); } }
-
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -166,21 +180,10 @@
         }
 
         async function updatePosition() {
-            const h = new Date().getHours();
             const banner = document.getElementById('connection-banner');
-
-            if (h < 9 || h >= 23) {
-                document.getElementById('status-dot').style.backgroundColor = "#e74c3c";
-                document.getElementById('status-text').textContent = "SERVICE REPREND À 09h";
-                banner.innerHTML = "SERVICE HORS HORAIRES";
-                banner.className = "status-sub-header status-error";
-                return;
-            }
-
             try {
                 const res = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${DEVICE_ID}`, { headers: { 'Authorization': AUTH } });
                 const positions = await res.json();
-                
                 if (positions.length > 0) {
                     const p = positions[0];
                     const newPos = [p.latitude, p.longitude];
@@ -193,48 +196,45 @@
                         routeLine.setLatLngs(routePath);
                     }
 
-                    // Détection Proximité & Son
-                    let alertMsg = `VITESSE : ${speedKmH} km/h`;
-                    let currentZoneAlert = false;
+                    // Suivi automatique
+                    if (autoCenter) {
+                        map.panTo(newPos, { animate: true, duration: 1.5, hard: true });
+                    }
 
+                    // Alertes Proximité & Son
+                    let alertText = `VITESSE : ${speedKmH} km/h`;
+                    let inZone = false;
                     circuitData.features.forEach(f => {
                         if (f.geometry.type === "Point") {
-                            const d = getDistance(newPos[0], newPos[1], f.geometry.coordinates[1], f.geometry.coordinates[0]);
-                            if (d < PROXIMITY_RADIUS) {
-                                alertMsg = `⚠️ ARRIVÉE IMMINENTE : ${f.properties.name.toUpperCase()}`;
-                                currentZoneAlert = true;
+                            if (getDistance(newPos[0], newPos[1], f.geometry.coordinates[1], f.geometry.coordinates[0]) < PROXIMITY_RADIUS) {
+                                alertText = `⚠️ ARRIVÉE IMMINENTE : ${f.properties.name.toUpperCase()}`;
+                                inZone = true;
                             }
                         }
                     });
 
-                    // Jouer le son si on vient d'entrer dans une zone
-                    if (currentZoneAlert && !isAlertActive) {
-                        alertSound.play().catch(e => console.log("Audio bloqué par le navigateur"));
+                    if (inZone && !isAlertActive) {
+                        alertSound.play().catch(() => {});
                         isAlertActive = true;
-                    } else if (!currentZoneAlert) {
-                        isAlertActive = false; // Reset quand on sort de la zone
-                    }
+                    } else if (!inZone) isAlertActive = false;
 
-                    banner.innerHTML = alertMsg;
-                    banner.className = currentZoneAlert ? "status-sub-header status-alert" : "status-sub-header status-ok";
-                    document.getElementById('status-dot').style.backgroundColor = "#2ecc71";
-                    document.getElementById('status-text').textContent = "NAVETTE EN DIRECT";
+                    banner.innerHTML = alertText;
+                    banner.className = inZone ? "status-sub-header status-alert" : "status-sub-header status-ok";
 
+                    // Marqueur
                     const label = `<b>NAVETTE MEGÈVE</b><br>${speedKmH} km/h`;
                     if (!navetteMarker) {
-                        navetteMarker = L.marker(lastNavLatLng, { icon: L.icon({ iconUrl: 'images/logonavettebleu.png', iconSize: [BUS_ICON_W, BUS_ICON_H], iconAnchor: [BUS_ICON_W / 2, BUS_ICON_H] }) }).addTo(map);
-                        navetteMarker.bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -BUS_ICON_H/2], className: 'navette-label' }).openTooltip();
+                        navetteMarker = L.marker(newPos, { icon: L.icon({ iconUrl: 'images/logonavettebleu.png', iconSize: [90, 90], iconAnchor: [45, 90] }) }).addTo(map);
+                        navetteMarker.bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -45], className: 'navette-label' }).openTooltip();
                     } else {
-                        navetteMarker.setLatLng(lastNavLatLng);
+                        navetteMarker.setLatLng(newPos);
                         navetteMarker.setTooltipContent(label);
                     }
                 }
-            } catch (e) { 
-                banner.className = "status-sub-header status-error";
-                banner.innerHTML = "ERREUR CONNEXION SERVEUR";
-            }
+            } catch (e) { banner.className = "status-sub-header status-error"; banner.innerHTML = "ERREUR SERVEUR"; }
         }
 
+        // --- FONCTIONS SECONDAIRES ---
         async function updateWeather() {
             try {
                 const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.61&current_weather=true');
@@ -242,7 +242,7 @@
                 document.getElementById('weather-temp').textContent = `${Math.round(data.current_weather.temperature)}°C`;
                 const img = document.getElementById('weather-icon');
                 img.src = "https://cdn-icons-png.flaticon.com/512/869/869869.png"; img.style.display = "block";
-            } catch (e) { }
+            } catch (e) {}
         }
 
         function updateClock() {
