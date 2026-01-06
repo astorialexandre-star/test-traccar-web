@@ -138,9 +138,11 @@
             })
         }).addTo(map);
 
-        // --- LOGIQUE NAVETTE ---
+// --- LOGIQUE NAVETTE ---
         let navetteMarker;
         let lastNavLatLng;
+        let routePath = []; // Stocke l'historique des positions
+        let routeLine = L.polyline([], {color: '#2ecc71', weight: 3, opacity: 0.7, dashArray: '5, 10'}).addTo(map);
 
         function recenterNavette() { if (lastNavLatLng) map.flyTo(lastNavLatLng, 17, {duration: 1.5}); }
 
@@ -158,7 +160,6 @@
             }
 
             try {
-                // Allongement du timeout à 8 secondes
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 8000);
 
@@ -168,23 +169,31 @@
                 });
                 
                 clearTimeout(timeoutId);
-
                 if (!res.ok) throw new Error("Status: " + res.status);
-
                 const positions = await res.json();
                 
                 if (positions.length > 0) {
                     const p = positions[0];
-                    lastNavLatLng = [p.latitude, p.longitude];
+                    const newPos = [p.latitude, p.longitude];
 
-                    // Mise à jour Vitesse
+                    // Vérifier si la position est différente de la dernière pour ne pas alourdir le tracé
+                    if (!lastNavLatLng || (lastNavLatLng[0] !== newPos[0] || lastNavLatLng[1] !== newPos[1])) {
+                        lastNavLatLng = newPos;
+                        routePath.push(newPos);
+                        
+                        // Limiter l'historique aux 100 derniers points pour la performance
+                        if (routePath.length > 100) routePath.shift();
+                        
+                        routeLine.setLatLngs(routePath);
+                    }
+
+                    // Mise à jour Vitesse et Interface
                     const speedKmH = Math.round(p.speed * 1.852); 
                     banner.innerHTML = `VITESSE : <span id="speed-val">${speedKmH}</span> km/h`;
                     banner.className = "status-sub-header status-ok";
                     document.getElementById('status-dot').style.backgroundColor = "#2ecc71";
                     document.getElementById('status-text').textContent = "NAVETTE EN DIRECT";
 
-                    // Mise à jour Marqueur
                     const navIcon = L.icon({
                         iconUrl: 'images/logonavettebleu.png',
                         iconSize: [BUS_ICON_W, BUS_ICON_H],
@@ -196,21 +205,15 @@
                     } else {
                         navetteMarker.setLatLng(lastNavLatLng);
                     }
-                } else {
-                    banner.innerHTML = "TRACCAR CONNECTÉ (ATTENTE DATA)";
-                    banner.className = "status-sub-header status-ok";
                 }
-            } // FIN DU BLOC TRY
-            catch (e) { 
-                console.error("Détail erreur:", e);
+            } catch (e) { 
+                console.error("Erreur Traccar:", e);
                 let msg = "ERREUR CONNEXION TRACCAR";
                 if (e.name === 'AbortError') msg = "⚠️ TIMEOUT RÉSEAU (LENT)";
-                
                 banner.innerHTML = msg;
                 banner.className = "status-sub-header status-error";
                 document.getElementById('status-dot').style.backgroundColor = "#7f8c8d";
-                document.getElementById('status-text').textContent = "TRACCAR HORS LIGNE";
-            } // FIN DU BLOC CATCH
+            }
         }
 
         // --- FONCTIONS SECONDAIRES ---
