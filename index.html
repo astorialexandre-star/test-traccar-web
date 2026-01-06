@@ -107,7 +107,7 @@
         ];
 
         hotelsData.forEach(h => {
-            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [80, 80], iconAnchor: [40, 100] }) }).addTo(map);
+            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [80, 80], iconAnchor: [40, 40] }) }).addTo(map);
         });
 
         map.on('locationfound', (e) => {
@@ -123,6 +123,7 @@
             const banner = document.getElementById('connection-banner');
             const liveDot = document.getElementById('live-dot');
             const liveText = document.getElementById('live-text');
+            const speedVal = document.getElementById('speed-val');
             
             const now = new Date();
             const hour = now.getHours();
@@ -171,7 +172,7 @@
 
                     if (!navetteMarker) {
                         navetteMarker = L.marker(newPos, { 
-                            icon: L.icon({ iconUrl: 'images/logonavettebleu.png', iconSize: [110, 110], iconAnchor: [55, 110] }) 
+                            icon: L.icon({ iconUrl: 'images/logonavettebleu.png', iconSize: [110, 110], iconAnchor: [55, 55] }) 
                         }).addTo(map);
                         navetteMarker.bindTooltip("NAVETTE", { permanent: true, direction: 'top', className: 'navette-label' }).openTooltip();
                     } else {
@@ -181,17 +182,19 @@
             } catch (e) { console.log("Erreur API"); }
         }
 
-        // --- NOUVELLE FONCTION METEO ---
+        // --- FONCTION SUPPRESSION HISTORIQUE (CORRIGÉE) ---
+        function clearHistory() {
+            travelHistory = []; // Vide le tableau des positions
+            historyLine.setLatLngs([]); // Efface le tracé sur la carte
+        }
+
         async function updateWeather() {
             try {
                 const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.61&current_weather=true');
                 const data = await res.json();
                 const temp = Math.round(data.current_weather.temperature);
                 document.getElementById('weather-temp').textContent = `${temp}°C`;
-            } catch(e) { 
-                console.log("Météo indisponible"); 
-                document.getElementById('weather-temp').textContent = "--°C";
-            }
+            } catch(e) { document.getElementById('weather-temp').textContent = "--°C"; }
         }
 
         function toggleAutoCenter() {
@@ -201,22 +204,20 @@
         }
 
         function recenterUser() {
-            if (userMarker) { autoCenter = false; map.flyTo(userMarker.getLatLng(), 17); }
+            if (userMarker) { autoCenter = false; map.flyTo(userMarker.getLatLng(), 17); document.getElementById('recenter-navette').classList.remove('active'); }
         }
 
         function updateClock() {
             document.getElementById('current-time').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // LOOPS
         setInterval(updatePosition, 3000);
         setInterval(updateClock, 1000);
-        setInterval(updateWeather, 1800000); // Toutes les 30 min
+        setInterval(updateWeather, 1800000);
         
-        // INITIALISATION
         updatePosition(); 
         updateClock(); 
-        updateWeather(); // Appel immédiat au chargement
+        updateWeather();
     </script>
 </body>
 </html>
