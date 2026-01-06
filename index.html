@@ -159,7 +159,7 @@
                     hotelsData.forEach(h => {
                         if (h.name === "L'Arboisie" || h.name === "Mamie Megève") {
                             const dist = map.distance(newPos, h.coords);
-                            if (dist < 100) { inZone = true; zoneName = h.name; }
+                            if (dist < 50) { inZone = true; zoneName = h.name; }
                         }
                     });
 
