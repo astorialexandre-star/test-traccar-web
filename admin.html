@@ -5,141 +5,105 @@
     <title>Admin - Gestion des Navettes 369</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; color: #1a1a1b; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        
-        h1 { border-bottom: 3px solid #3498db; padding-bottom: 15px; font-size: 24px; color: #2c3e50; margin-top: 0; }
-        p.subtitle { color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }
-
+        h1 { border-bottom: 3px solid #3498db; padding-bottom: 15px; color: #2c3e50; }
         .device-card { 
             display: flex; align-items: center; justify-content: space-between; 
             padding: 20px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px;
-            transition: all 0.3s ease;
+            transition: 0.3s;
         }
-        .device-card.success { border-color: #2ecc71; background-color: #fafffb; }
-        .device-card.error { border-color: #e74c3c; background-color: #fffafa; }
-
+        .device-card.success { border-color: #2ecc71; background: #fafffb; }
+        .device-card.error { border-color: #e74c3c; background: #fffafa; }
         .device-info { display: flex; flex-direction: column; }
-        .device-name { font-weight: bold; font-size: 16px; }
-        .device-id { font-size: 12px; color: #95a5a6; margin-top: 4px; }
-        
-        .status-pill {
-            font-size: 10px; text-transform: uppercase; padding: 2px 8px; 
-            border-radius: 10px; width: fit-content; margin-top: 5px; font-weight: bold;
-        }
-        .online { background: #ecfaf2; color: #2ecc71; }
-        .offline { background: #fdf2f2; color: #e74c3c; }
+        .device-name { font-weight: bold; }
+        .device-id { font-size: 12px; color: #95a5a6; }
 
-        /* Switch Style */
+        /* Switch UI */
         .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { 
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
-            background-color: #ccc; transition: .4s; border-radius: 34px; 
-        }
-        .slider:before { 
-            position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; 
-            background-color: white; transition: .4s; border-radius: 50%; 
-        }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #2ecc71; }
         input:checked + .slider:before { transform: translateX(24px); }
-
-        #loader { text-align: center; color: #3498db; font-weight: bold; padding: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Gestion de la Flotte</h1>
-        <p class="subtitle">Sélectionnez les navettes à afficher sur la carte publique.</p>
-        
-        <div id="device-list">
-            <div id="loader">Connexion au serveur Traccar...</div>
-        </div>
+        <div id="device-list">Chargement des navettes...</div>
     </div>
 
     <script>
         const TRACCAR_URL = 'https://369shuttles.duckdns.org';
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
 
-        // Chargement initial des navettes
         async function loadDevices() {
             try {
                 const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
-                if (!res.ok) throw new Error("Erreur de connexion");
-                
                 const devices = await res.json();
                 const list = document.getElementById('device-list');
                 list.innerHTML = '';
 
                 devices.forEach(dev => {
                     const isVisible = dev.attributes.showOnPublicMap === true;
-                    const statusClass = dev.status === 'online' ? 'online' : 'offline';
-                    
                     const div = document.createElement('div');
                     div.className = 'device-card';
                     div.id = `card-${dev.id}`;
                     div.innerHTML = `
                         <div class="device-info">
                             <span class="device-name">${dev.name}</span>
-                            <span class="device-id">ID: ${dev.id} | IMEI: ${dev.uniqueId}</span>
-                            <span class="status-pill ${statusClass}">${dev.status}</span>
+                            <span class="device-id">ID: ${dev.id}</span>
                         </div>
                         <label class="switch">
-                            <input type="checkbox" ${isVisible ? 'checked' : ''} 
-                                   onchange="toggleDevice(${dev.id}, this.checked)">
+                            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleDevice(${dev.id}, this.checked)">
                             <span class="slider"></span>
                         </label>
                     `;
                     list.appendChild(div);
                 });
-            } catch (error) {
-                document.getElementById('device-list').innerHTML = `<div style="color:red">Erreur : ${error.message}</div>`;
-            }
+            } catch (e) { console.error("Erreur chargement", e); }
         }
 
-        // Mise à jour de la visibilité
-        async function toggleDevice(deviceId, isChecked) {
-            const cleanId = parseInt(deviceId); // Correction de l'ID pour éviter le 1:1
-            const card = document.getElementById(`card-${cleanId}`);
-            
+        async function toggleDevice(idInput, isChecked) {
+            // NETTOYAGE CRITIQUE : On force l'ID à être un nombre pur (ex: "1:1" devient 1)
+            const deviceId = parseInt(idInput);
+            const card = document.getElementById(`card-${deviceId}`);
+
             try {
-                // 1. Récupérer l'objet complet actuel
+                // 1. Récupérer les données fraîches du device
                 const resGet = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
                 const devices = await resGet.json();
-                const device = devices.find(d => d.id === cleanId);
+                const device = devices.find(d => d.id === deviceId);
 
-                if (!device) return;
+                if (!device) throw new Error("Device introuvable");
 
-                // 2. Modifier l'attribut de visibilité
+                // 2. Mettre à jour l'attribut
+                if (!device.attributes) device.attributes = {};
                 device.attributes.showOnPublicMap = isChecked;
 
-                // 3. Envoyer la modification au serveur
-                const resPut = await fetch(`${TRACCAR_URL}/api/devices/${cleanId}`, {
+                // 3. Envoyer la mise à jour (URL corrigée sans le ":1")
+                const resPut = await fetch(`${TRACCAR_URL}/api/devices/${deviceId}`, {
                     method: 'PUT',
-                    headers: { 
-                        'Authorization': AUTH, 
-                        'Content-Type': 'application/json' 
-                    },
+                    headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
                     body: JSON.stringify(device)
                 });
 
                 if (resPut.ok) {
-                    console.log(`Succès : Navette ${cleanId} mise à jour`);
-                    // Petit effet visuel de succès
                     card.classList.add('success');
                     setTimeout(() => card.classList.remove('success'), 1000);
+                    console.log(`Navette ${deviceId} mise à jour avec succès`);
                 } else {
-                    throw new Error("Echec de la mise à jour");
+                    throw new Error(`Erreur serveur: ${resPut.status}`);
                 }
             } catch (err) {
                 console.error(err);
                 card.classList.add('error');
-                alert("Erreur lors de la mise à jour sur le serveur.");
+                alert("Erreur lors de la mise à jour. Vérifiez la console.");
                 setTimeout(() => card.classList.remove('error'), 2000);
             }
         }
 
-        // Lancement au chargement de la page
         loadDevices();
     </script>
 </body>
