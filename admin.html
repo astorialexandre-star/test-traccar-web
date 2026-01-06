@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Gestion des Navettes</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; color: #2c3e50; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { border-bottom: 2px solid #3498db; padding-bottom: 10px; font-size: 22px; }
+        .device-card { display: flex; align-items: center; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee; }
+        .device-info { display: flex; flex-direction: column; }
+        .device-name { font-weight: bold; }
+        .device-id { font-size: 12px; color: #7f8c8d; }
+        /* Switch Style */
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2ecc71; }
+        input:checked + .slider:before { transform: translateX(24px); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gestion de la Flotte</h1>
+        <div id="device-list">Chargement des navettes...</div>
+    </div>
+
+    <script>
+        const TRACCAR_URL = 'https://369shuttles.duckdns.org';
+        const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
+
+        async function loadDevices() {
+            const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
+            const devices = await res.json();
+            const list = document.getElementById('device-list');
+            list.innerHTML = '';
+
+            devices.forEach(dev => {
+                const isVisible = dev.attributes.showOnPublicMap === true;
+                const div = document.createElement('div');
+                div.className = 'device-card';
+                div.innerHTML = `
+                    <div class="device-info">
+                        <span class="device-name">${dev.name}</span>
+                        <span class="device-id">ID: ${dev.id} | ${dev.status}</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleDevice(${dev.id}, this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        async function toggleDevice(deviceId, isChecked) {
+            // 1. Récupérer l'objet device complet d'abord
+            const resGet = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
+            const devices = await resGet.json();
+            const device = devices.find(d => d.id === deviceId);
+
+            // 2. Modifier l'attribut
+            device.attributes.showOnPublicMap = isChecked;
+
+            // 3. Envoyer la mise à jour
+            const resPut = await fetch(`${TRACCAR_URL}/api/devices/${deviceId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
+                body: JSON.stringify(device)
+            });
+
+            if(resPut.ok) { console.log(`Navette ${deviceId} mise à jour`); }
+        }
+
+        loadDevices();
+    </script>
+</body>
+</html>
