@@ -15,7 +15,6 @@
             transition: transform 1.5s linear, left 1.5s linear, top 1.5s linear;
         }
 
-        /* Bannière principale (Heure, Météo) */
         .status-header {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: rgba(255,255,255,0.95); 
@@ -31,7 +30,6 @@
         #weather-temp { font-weight: bold; font-size: 16px; color: #2c3e50; }
         #weather-icon { width: 28px; height: 28px; margin-left: 5px; }
 
-        /* Nouvelle Bannière de Connexion et Vitesse */
         .status-sub-header {
             position: absolute; top: 80px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: rgba(255,255,255,0.9); 
@@ -44,7 +42,6 @@
         .status-ok { color: #27ae60; border: 1px solid #2ecc71; }
         .status-error { color: white; background: #e74c3c !important; border: 1px solid #c0392b; }
 
-        /* Commandes de la carte */
         .map-controls { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px; }
         .control-btn {
             background: white; border: none; border-radius: 50%;
@@ -55,7 +52,6 @@
         #recenter-navette { background: #3388ff; }
         #recenter-navette img { filter: invert(1); width: 26px; }
         
-        /* Points et Animations */
         .user-location-dot { width: 12px; height: 12px; background: #2196F3; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
         .dot { height: 12px; width: 12px; background-color: #2ecc71; border-radius: 50%; }
         .pulse { animation: pulse-green 2s infinite; }
@@ -138,10 +134,10 @@
             })
         }).addTo(map);
 
-// --- LOGIQUE NAVETTE ---
+        // --- LOGIQUE NAVETTE ---
         let navetteMarker;
         let lastNavLatLng;
-        let routePath = []; // Stocke l'historique des positions
+        let routePath = []; 
         let routeLine = L.polyline([], {color: '#2ecc71', weight: 3, opacity: 0.7, dashArray: '5, 10'}).addTo(map);
 
         function recenterNavette() { if (lastNavLatLng) map.flyTo(lastNavLatLng, 17, {duration: 1.5}); }
@@ -149,7 +145,6 @@
         async function updatePosition() {
             const h = new Date().getHours();
             const banner = document.getElementById('connection-banner');
-            const speedEl = document.getElementById('speed-val');
 
             if (h < 9 || h >= 23) {
                 document.getElementById('status-dot').style.backgroundColor = "#e74c3c";
@@ -176,31 +171,28 @@
                     const p = positions[0];
                     const newPos = [p.latitude, p.longitude];
 
-                    // Vérifier si la position est différente de la dernière pour ne pas alourdir le tracé
+                    // Mise à jour de l'historique de tracé
                     if (!lastNavLatLng || (lastNavLatLng[0] !== newPos[0] || lastNavLatLng[1] !== newPos[1])) {
                         lastNavLatLng = newPos;
                         routePath.push(newPos);
-                        
-                        // Limiter l'historique aux 100 derniers points pour la performance
                         if (routePath.length > 100) routePath.shift();
-                        
                         routeLine.setLatLngs(routePath);
                     }
 
-                    // Mise à jour Vitesse et Interface
+                    // Mise à jour Interface
                     const speedKmH = Math.round(p.speed * 1.852); 
                     banner.innerHTML = `VITESSE : <span id="speed-val">${speedKmH}</span> km/h`;
                     banner.className = "status-sub-header status-ok";
                     document.getElementById('status-dot').style.backgroundColor = "#2ecc71";
                     document.getElementById('status-text').textContent = "NAVETTE EN DIRECT";
 
-                    const navIcon = L.icon({
-                        iconUrl: 'images/logonavettebleu.png',
-                        iconSize: [BUS_ICON_W, BUS_ICON_H],
-                        iconAnchor: [BUS_ICON_W / 2, BUS_ICON_H]
-                    });
-
+                    // Gestion du marqueur
                     if (!navetteMarker) {
+                        const navIcon = L.icon({
+                            iconUrl: 'images/logonavettebleu.png',
+                            iconSize: [BUS_ICON_W, BUS_ICON_H],
+                            iconAnchor: [BUS_ICON_W / 2, BUS_ICON_H]
+                        });
                         navetteMarker = L.marker(lastNavLatLng, { icon: navIcon }).addTo(map);
                     } else {
                         navetteMarker.setLatLng(lastNavLatLng);
@@ -208,8 +200,7 @@
                 }
             } catch (e) { 
                 console.error("Erreur Traccar:", e);
-                let msg = "ERREUR CONNEXION TRACCAR";
-                if (e.name === 'AbortError') msg = "⚠️ TIMEOUT RÉSEAU (LENT)";
+                let msg = (e.name === 'AbortError') ? "⚠️ TIMEOUT RÉSEAU (LENT)" : "⚠️ ERREUR CONNEXION TRACCAR";
                 banner.innerHTML = msg;
                 banner.className = "status-sub-header status-error";
                 document.getElementById('status-dot').style.backgroundColor = "#7f8c8d";
