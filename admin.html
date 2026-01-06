@@ -5,33 +5,39 @@
     <title>Admin - Gestion des Navettes 369</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; color: #1a1a1b; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        h1 { border-bottom: 3px solid #3498db; padding-bottom: 15px; color: #2c3e50; }
+        h1 { border-bottom: 3px solid #3498db; padding-bottom: 15px; font-size: 24px; color: #2c3e50; margin-top: 0; }
+        p.subtitle { color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }
+
         .device-card { 
             display: flex; align-items: center; justify-content: space-between; 
             padding: 20px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px;
-            transition: 0.3s;
+            transition: all 0.3s ease;
         }
-        .device-card.success { border-color: #2ecc71; background: #fafffb; }
-        .device-card.error { border-color: #e74c3c; background: #fffafa; }
-        .device-info { display: flex; flex-direction: column; }
-        .device-name { font-weight: bold; }
-        .device-id { font-size: 12px; color: #95a5a6; }
+        .device-card.success { border-color: #2ecc71; background-color: #fafffb; }
+        .device-card.error { border-color: #e74c3c; background-color: #fffafa; }
 
-        /* Switch UI */
+        .device-info { display: flex; flex-direction: column; }
+        .device-name { font-weight: bold; font-size: 16px; }
+        .device-id { font-size: 12px; color: #95a5a6; margin-top: 4px; }
+        
+        /* Switch Style */
         .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #2ecc71; }
         input:checked + .slider:before { transform: translateX(24px); }
+
+        #device-list { min-height: 100px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Gestion de la Flotte</h1>
-        <div id="device-list">Chargement des navettes...</div>
+        <p class="subtitle">Activez les navettes pour les afficher sur la carte publique.</p>
+        <div id="device-list">Chargement...</div>
     </div>
 
     <script>
@@ -56,7 +62,7 @@
                             <span class="device-id">ID: ${dev.id}</span>
                         </div>
                         <label class="switch">
-                            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleDevice(${dev.id}, this.checked)">
+                            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleDevice('${dev.id}', this.checked)">
                             <span class="slider"></span>
                         </label>
                     `;
@@ -65,25 +71,25 @@
             } catch (e) { console.error("Erreur chargement", e); }
         }
 
-        async function toggleDevice(idInput, isChecked) {
-            // NETTOYAGE CRITIQUE : On force l'ID à être un nombre pur (ex: "1:1" devient 1)
-            const deviceId = parseInt(idInput);
-            const card = document.getElementById(`card-${deviceId}`);
+        async function toggleDevice(rawId, isChecked) {
+            // FORCE LE NETTOYAGE DE L'ID (Supprime tout ce qui n'est pas un chiffre)
+            const cleanId = rawId.toString().split(':')[0]; 
+            const card = document.getElementById(`card-${cleanId}`);
 
             try {
-                // 1. Récupérer les données fraîches du device
+                // 1. Récupération des données actuelles
                 const resGet = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
                 const devices = await resGet.json();
-                const device = devices.find(d => d.id === deviceId);
+                const device = devices.find(d => d.id == cleanId);
 
-                if (!device) throw new Error("Device introuvable");
+                if (!device) throw new Error("Navette introuvable");
 
-                // 2. Mettre à jour l'attribut
+                // 2. Mise à jour de l'attribut de visibilité
                 if (!device.attributes) device.attributes = {};
                 device.attributes.showOnPublicMap = isChecked;
 
-                // 3. Envoyer la mise à jour (URL corrigée sans le ":1")
-                const resPut = await fetch(`${TRACCAR_URL}/api/devices/${deviceId}`, {
+                // 3. Envoi au serveur avec l'ID nettoyé
+                const resPut = await fetch(`${TRACCAR_URL}/api/devices/${cleanId}`, {
                     method: 'PUT',
                     headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
                     body: JSON.stringify(device)
@@ -92,14 +98,13 @@
                 if (resPut.ok) {
                     card.classList.add('success');
                     setTimeout(() => card.classList.remove('success'), 1000);
-                    console.log(`Navette ${deviceId} mise à jour avec succès`);
                 } else {
-                    throw new Error(`Erreur serveur: ${resPut.status}`);
+                    throw new Error("Erreur serveur " + resPut.status);
                 }
             } catch (err) {
-                console.error(err);
+                console.error("Erreur:", err);
                 card.classList.add('error');
-                alert("Erreur lors de la mise à jour. Vérifiez la console.");
+                alert("Échec de la mise à jour. Vérifiez la connexion.");
                 setTimeout(() => card.classList.remove('error'), 2000);
             }
         }
