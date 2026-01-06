@@ -107,7 +107,7 @@
         ];
 
         hotelsData.forEach(h => {
-            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [100, 100], iconAnchor: [50, 100] }) }).addTo(map);
+            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [80, 80], iconAnchor: [40, 100] }) }).addTo(map);
         });
 
         map.on('locationfound', (e) => {
