@@ -9,12 +9,10 @@
         #map { height: 100vh; width: 100%; }
         body { margin: 0; padding: 0; overflow: hidden; background-color: #f4f4f4; }
         
-        /* Animation pour un mouvement fluide de la navette */
         .leaflet-marker-icon {
             transition: transform 1.5s linear, left 1.5s linear, top 1.5s linear;
         }
 
-        /* Bannière supérieure */
         .status-header {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: rgba(255,255,255,0.95); 
@@ -30,7 +28,6 @@
         #weather-temp { font-weight: bold; font-size: 16px; color: #2c3e50; }
         #weather-icon { width: 28px; height: 28px; margin-left: 5px; }
 
-        /* Commandes à droite */
         .map-controls { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px; }
         .control-btn {
             background: white; border: none; border-radius: 50%;
@@ -42,10 +39,8 @@
         #recenter-navette { background: #3388ff; }
         #recenter-navette img { filter: invert(1); width: 26px; }
         
-        /* Point bleu utilisateur */
         .user-location-dot { width: 12px; height: 12px; background: #2196F3; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
         
-        /* Point vert statut */
         .dot { height: 12px; width: 12px; background-color: #2ecc71; border-radius: 50%; }
         .pulse { animation: pulse-green 2s infinite; }
         @keyframes pulse-green {
@@ -79,22 +74,18 @@
     <div id="map"></div>
 
     <script>
-        // CONFIGURATION
         const TRACCAR_URL = 'http://192.168.1.60:8082';
         const DEVICE_ID = '1';
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
 
-        // TAILLES DES PUNAISES
         const HOTEL_ICON_W = 80;  
         const HOTEL_ICON_H = 80;  
         const BUS_ICON_W = 90; 
         const BUS_ICON_H = 90;
 
-        // INITIALISATION CARTE
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 16);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // GEOLOCALISATION UTILISATEUR
         let userMarker;
         map.locate({watch: true, enableHighAccuracy: true});
         map.on('locationfound', (e) => {
@@ -103,14 +94,13 @@
         });
         function recenterUser() { if (userMarker) map.flyTo(userMarker.getLatLng(), 17, {duration: 1.5}); }
 
-        // CIRCUIT ET HOTELS
         const circuitData = {
             "type": "FeatureCollection",
             "features": [
                 { "type": "Feature", "geometry": { "type": "LineString", "coordinates": [[6.6293,45.8592],[6.6293,45.8590],[6.6293,45.8588],[6.6290,45.8587],[6.6280,45.8583],[6.6271,45.8581],[6.6267,45.8581],[6.6267,45.8582],[6.6269,45.8583],[6.6271,45.8585],[6.6273,45.8587],[6.6279,45.8589],[6.6280,45.8590],[6.6280,45.8592],[6.6278,45.8592],[6.6270,45.8591],[6.6268,45.8589],[6.6264,45.8586],[6.6261,45.8586],[6.6261,45.8588],[6.6267,45.8595],[6.6270,45.8598],[6.6272,45.8599],[6.6273,45.8602],[6.6274,45.8608],[6.6271,45.8606],[6.6268,45.8603],[6.6263,45.8602],[6.6256,45.8598],[6.6250,45.8593],[6.6243,45.8589],[6.6237,45.8584],[6.6225,45.8580],[6.6210,45.8576],[6.6207,45.8576]] } },
-                { "type": "Feature", "properties": { "icon": "Logomamiemegeve.png" }, "geometry": { "type": "Point", "coordinates": [6.6291, 45.8593] } },
-                { "type": "Feature", "properties": { "icon": "Logomontdarbois.png" }, "geometry": { "type": "Point", "coordinates": [6.6317, 45.8538] } },
-                { "type": "Feature", "properties": { "icon": "Logolarboisie.png" }, "geometry": { "type": "Point", "coordinates": [6.6276, 45.8586] } }
+                { "type": "Feature", "properties": { "icon": "images/Logomamiemegeve.png" }, "geometry": { "type": "Point", "coordinates": [6.6291, 45.8593] } },
+                { "type": "Feature", "properties": { "icon": "images/Logomontdarbois.png" }, "geometry": { "type": "Point", "coordinates": [6.6317, 45.8538] } },
+                { "type": "Feature", "properties": { "icon": "images/Logolarboisie.png" }, "geometry": { "type": "Point", "coordinates": [6.6276, 45.8586] } }
             ]
         };
 
@@ -125,7 +115,6 @@
             })
         }).addTo(map);
 
-        // LOGIQUE DE LA NAVETTE
         let navetteMarker;
         let lastNavLatLng;
 
@@ -147,7 +136,7 @@
                     lastNavLatLng = [p.latitude, p.longitude];
 
                     const navIcon = L.icon({
-                        iconUrl: 'logonavettebleu.png',
+                        iconUrl: 'images/logonavettebleu.png',
                         iconSize: [BUS_ICON_W, BUS_ICON_H],
                         iconAnchor: [BUS_ICON_W / 2, BUS_ICON_H]
                     });
@@ -162,7 +151,6 @@
             } catch (e) { console.error("Traccar offline"); }
         }
 
-        // METEO ET HORLOGE
         async function updateWeather() {
             try {
                 const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.61&current_weather=true');
@@ -179,12 +167,10 @@
             document.getElementById('current-time').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // INTERVALLES
-        setInterval(updatePosition, 3000); // 3 secondes pour la navette
+        setInterval(updatePosition, 3000); 
         setInterval(updateClock, 1000); 
-        setInterval(updateWeather, 1800000); // 30 mins pour la météo
+        setInterval(updateWeather, 1800000); 
 
-        // Lancement immédiat
         updatePosition(); updateClock(); updateWeather();
     </script>
 </body>
