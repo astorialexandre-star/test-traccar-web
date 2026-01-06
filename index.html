@@ -142,7 +142,7 @@
         L.geoJSON(circuitData, { style: { color: '#3388ff', weight: 4, opacity: 0.6 } }).addTo(map);
 
         hotelsData.forEach(h => {
-            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [50, 50], iconAnchor: [25, 50] }) }).addTo(map);
+            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [80, 80], iconAnchor: [40, 80] }) }).addTo(map);
         });
 
         let navetteMarker;
