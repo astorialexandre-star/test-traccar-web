@@ -123,7 +123,6 @@
             const banner = document.getElementById('connection-banner');
             const liveDot = document.getElementById('live-dot');
             const liveText = document.getElementById('live-text');
-            const speedVal = document.getElementById('speed-val');
             
             const now = new Date();
             const hour = now.getHours();
@@ -174,7 +173,6 @@
                         navetteMarker = L.marker(newPos, { 
                             icon: L.icon({ iconUrl: 'images/logonavettebleu.png', iconSize: [110, 110], iconAnchor: [55, 55] }) 
                         }).addTo(map);
-                        navetteMarker.bindTooltip("NAVETTE", { permanent: true, direction: 'top', className: 'navette-label' }).openTooltip();
                     } else {
                         navetteMarker.setLatLng(newPos);
                     }
@@ -182,10 +180,9 @@
             } catch (e) { console.log("Erreur API"); }
         }
 
-        // --- FONCTION SUPPRESSION HISTORIQUE (CORRIGÉE) ---
         function clearHistory() {
-            travelHistory = []; // Vide le tableau des positions
-            historyLine.setLatLngs([]); // Efface le tracé sur la carte
+            travelHistory = []; 
+            historyLine.setLatLngs([]); 
         }
 
         async function updateWeather() {
