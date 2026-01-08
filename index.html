@@ -81,7 +81,7 @@
 
     <script>
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
-        const DEVICE_ID = '1';
+        const DEVICE_ID = '4'; // <--- MODIFIÉ : ID TRACCAR 4
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
         
         let autoCenter = true;
@@ -148,7 +148,7 @@
                     const speed = Math.round(p.speed * 1.852);
                     lastNavLatLng = newPos;
 
-                    // --- FILTRAGE HISTORIQUE : AJOUT SI MOUVEMENT > 10 MÈTRES ---
+                    // --- LOGIQUE FILTRAGE (DÉPLACEMENT MINIMUM 10 MÈTRES) ---
                     let shouldAddPoint = false;
                     if (travelHistory.length === 0) {
                         shouldAddPoint = true; 
@@ -163,7 +163,6 @@
                         if (travelHistory.length > 100) travelHistory.shift(); 
                         historyLine.setLatLngs(travelHistory);
                     }
-                    // ----------------------------------------------------------
 
                     if (autoCenter) map.panTo(newPos, { animate: true });
 
