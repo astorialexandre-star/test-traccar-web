@@ -148,9 +148,22 @@
                     const speed = Math.round(p.speed * 1.852);
                     lastNavLatLng = newPos;
 
-                    travelHistory.push(newPos);
-                    if (travelHistory.length > 100) travelHistory.shift(); 
-                    historyLine.setLatLngs(travelHistory);
+                    // --- FILTRAGE HISTORIQUE : AJOUT SI MOUVEMENT > 10 MÈTRES ---
+                    let shouldAddPoint = false;
+                    if (travelHistory.length === 0) {
+                        shouldAddPoint = true; 
+                    } else {
+                        const lastPoint = travelHistory[travelHistory.length - 1];
+                        const distanceMoved = map.distance(lastPoint, newPos);
+                        if (distanceMoved > 10) shouldAddPoint = true;
+                    }
+
+                    if (shouldAddPoint) {
+                        travelHistory.push(newPos);
+                        if (travelHistory.length > 100) travelHistory.shift(); 
+                        historyLine.setLatLngs(travelHistory);
+                    }
+                    // ----------------------------------------------------------
 
                     if (autoCenter) map.panTo(newPos, { animate: true });
 
