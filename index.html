@@ -17,56 +17,60 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 85%; max-width: 400px; text-align: center;
         }
         .status-top { display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .status-time { font-size: 18px; font-weight: bold; }
 
-        /* Nouveau Sélecteur de Navette sous le header */
+        /* Sélecteur de Navette */
         .shuttle-selector-container {
             position: absolute; top: 65px; left: 50%; transform: translateX(-50%); 
             z-index: 1001; width: 100%; display: flex; justify-content: center;
         }
         #shuttle-select {
             padding: 6px 14px; border-radius: 20px; border: 2px solid #3388ff;
-            font-weight: bold; background: white; cursor: pointer; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 14px; outline: none;
+            font-weight: bold; background: white; cursor: pointer; font-size: 14px;
         }
 
-        /* Banner Vitesse / Arrivée */
+        /* Banner Vitesse */
         .status-sub-header {
             position: absolute; top: 110px; left: 50%; transform: translateX(-50%); 
-            z-index: 1000; padding: 5px 15px; border-radius: 10px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 13px; font-weight: bold;
-            min-width: 180px; text-align: center;
+            z-index: 1000; padding: 5px 15px; border-radius: 10px; font-size: 13px; font-weight: bold;
+            min-width: 180px; text-align: center; background: white; border: 1px solid #2ecc71;
         }
-        .status-ok { background: white; color: #27ae60; border: 1px solid #2ecc71; }
-        .status-alert { background: #e67e22; color: white; border: 1px solid #d35400; animation: blink 1s infinite; }
 
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
-
-        /* Contrôles de Carte avec vos Nouvelles Icônes */
+        /* Contrôles de Carte avec les NOUVELLES icônes */
         .map-controls { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
         .control-btn {
             background: white; border: none; border-radius: 50%; width: 65px; height: 65px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.25); cursor: pointer;
             display: flex; align-items: center; justify-content: center; padding: 0;
-            transition: transform 0.1s;
         }
-        .control-btn:active { transform: scale(0.9); }
         .control-btn img { width: 100%; height: 100%; object-fit: contain; }
         
         #recenter-navette.active { border: 3px solid #3388ff; box-sizing: border-box; }
-        
-        .dot { height: 10px; width: 10px; background-color: #2ecc71; border-radius: 50%; }
-        .user-location-dot { width: 14px; height: 14px; background: #2196F3; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 8px rgba(33, 150, 243, 0.6); }
+
+        /* Style du nouveau désignateur de navette */
+        .navette-loader {
+            display: flex; align-items: center; justify-content: center;
+        }
+        .bus-circle {
+            width: 50px; height: 50px; background: white; border-radius: 50%;
+            border: 3px solid #005587; display: flex; align-items: center; 
+            justify-content: center; z-index: 2; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .direction-arrow {
+            position: absolute; width: 0; height: 0; 
+            border-top: 10px solid transparent; border-bottom: 10px solid transparent;
+            border-left: 15px solid #333; left: 42px;
+            transform-origin: -17px center; z-index: 1;
+        }
+
+        .user-location-dot { width: 14px; height: 14px; background: #2196F3; border: 2px solid white; border-radius: 50%; }
     </style>
 </head>
 <body>
 
     <div class="status-header">
         <div class="status-top">
-            <div id="live-dot" class="dot"></div>
-            <span id="live-text" style="font-size: 11px; font-weight: bold;">DIRECT</span>
-            <span id="current-time" class="status-time">--:--</span>
-            <span id="weather-temp" style="margin-left:10px; font-weight: bold;">--°C</span>
+            <span id="current-time" style="font-weight:bold; font-size:18px;">--:--</span>
+            <span id="weather-temp" style="margin-left:10px; font-weight:bold;">--°C</span>
         </div>
     </div>
 
@@ -77,18 +81,12 @@
         </select>
     </div>
 
-    <div id="connection-banner" class="status-sub-header status-ok">VITESSE : 0 km/h</div>
+    <div id="connection-banner" class="status-sub-header">VITESSE : 0 km/h</div>
 
     <div class="map-controls">
-        <button class="control-btn" title="Effacer le tracé" onclick="clearHistory()">
-            <img src="images/icon_trash.png"> 
-        </button>
-        <button class="control-btn" title="Ma position" onclick="recenterUser()">
-            <img src="images/icon_user_pos.png">
-        </button>
-        <button class="control-btn active" id="recenter-navette" title="Suivre navette" onclick="toggleAutoCenter()">
-            <img src="images/icon_focus_nav.png">
-        </button>
+        <button class="control-btn" onclick="clearHistory()"><img src="images/icon_trash.png"></button>
+        <button class="control-btn" onclick="recenterUser()"><img src="images/icon_user_pos.png"></button>
+        <button class="control-btn active" id="recenter-navette" onclick="toggleAutoCenter()"><img src="images/icon_focus_nav.png"></button>
     </div>
 
     <div id="map"></div>
@@ -99,40 +97,21 @@
         
         let currentDeviceId = '4'; 
         let autoCenter = true;
-        let lastNavLatLng = null;
-        let userMarker = null;
+        let navetteMarker, userMarker;
         let travelHistory = [];
         let historyLine;
-        let navetteMarker;
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-
-        historyLine = L.polyline([], {color: '#2ecc71', weight: 6, opacity: 0.8, lineCap: 'round'}).addTo(map);
-
-        const circuitData = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.629327,45.859227],[6.629352,45.859139],[6.629369,45.859059],[6.629361,45.858970],[6.629314,45.858899],[6.629255,45.858843],[6.629153,45.858796],[6.629030,45.858754],[6.628877,45.858692],[6.628690,45.858619],[6.628461,45.858521],[6.628291,45.858447],[6.628192,45.858403],[6.628052,45.858371],[6.627895,45.858341],[6.627708,45.858306],[6.627564,45.858276],[6.627428,45.858238],[6.627330,45.858181],[6.627224,45.858134],[6.627135,45.858081],[6.627004,45.858048],[6.626842,45.858051],[6.626753,45.858102],[6.626707,45.858187],[6.626766,45.858261],[6.626889,45.858353],[6.627059,45.858492],[6.627190,45.858595],[6.627313,45.858707],[6.627398,45.858778],[6.627564,45.858894],[6.627747,45.858956],[6.627937,45.859003],[6.628044,45.859062],[6.628073,45.859151],[6.627982,45.859270],[6.627848,45.859299],[6.627689,45.859269],[6.627551,45.859234]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.627548,45.859232],[6.627420,45.859201],[6.627136,45.859131],[6.626844,45.858992],[6.626603,45.858758],[6.626276,45.858611],[6.626118,45.858680],[6.626159,45.858863],[6.626514,45.859240],[6.626854,45.859639],[6.627108,45.859871],[6.627349,45.860312],[6.627438,45.860869],[6.627041,45.860568],[6.626224,45.860300],[6.626028,45.860097],[6.625535,45.859664],[6.625089,45.859361],[6.624640,45.859091],[6.624190,45.858753],[6.623778,45.858472]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.623778,45.858472],[6.623050,45.858262],[6.622379,45.858004],[6.621634,45.857747],[6.620984,45.857615],[6.620851,45.857641],[6.620729,45.857588],[6.620748,45.857562],[6.620658,45.857497],[6.620737,45.857529],[6.620898,45.857593],[6.620970,45.857613]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631599,45.853848],[6.631526,45.854377],[6.631436,45.855170],[6.631368,45.855894],[6.631256,45.856669],[6.631171,45.857162],[6.631103,45.857644],[6.631126,45.858208],[6.631247,45.858865],[6.631296,45.859061]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631295,45.859061],[6.631196,45.859342],[6.630607,45.859949],[6.630039,45.860571],[6.630101,45.860843],[6.630560,45.861179],[6.631005,45.861818],[6.631160,45.862401],[6.631349,45.862799],[6.631745,45.863157],[6.632047,45.863829],[6.632563,45.864357],[6.632827,45.864952],[6.633118,45.865281],[6.633651,45.865602],[6.633606,45.865833],[6.633257,45.865867],[6.632917,45.865706],[6.632256,45.865130],[6.631747,45.864633],[6.631235,45.864068],[6.630441,45.863589],[6.629704,45.863008],[6.629313,45.862561],[6.629117,45.862146],[6.628441,45.861607],[6.627921,45.861233],[6.627438,45.860869]]}}]}
-        L.geoJSON(circuitData, { style: { color: '#3388ff', weight: 7, opacity: 0.6 } }).addTo(map);
-
-        const hotelsData = [
-            { "name": "Mamie Megève", "icon": "images/logomamiemegeve.png", "coords": [45.8593, 6.6291] },
-            { "name": "Mont d'Arbois", "icon": "images/logomontdarbois.png", "coords": [45.8538, 6.6317] },
-            { "name": "L'Arboisie", "icon": "images/logolarboisie.png", "coords": [45.8586, 6.6276] },
-            { "name": "Village", "icon": "images/logovillage.png", "coords": [45.8575, 6.6206] },
-        ];
-
-        hotelsData.forEach(h => {
-            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [80, 80], iconAnchor: [40, 40] }) }).addTo(map);
-        });
+        historyLine = L.polyline([], {color: '#2ecc71', weight: 6}).addTo(map);
 
         map.on('locationfound', (e) => {
-            if (!userMarker) {
-                userMarker = L.marker(e.latlng, { icon: L.divIcon({ className: 'user-location-dot' }) }).addTo(map);
-            } else userMarker.setLatLng(e.latlng);
+            if (!userMarker) userMarker = L.marker(e.latlng, { icon: L.divIcon({ className: 'user-location-dot' }) }).addTo(map);
+            else userMarker.setLatLng(e.latlng);
         });
-        map.locate({watch: true, enableHighAccuracy: true});
+        map.locate({watch: true});
 
         async function updatePosition() {
-            const banner = document.getElementById('connection-banner');
             try {
                 const res = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
                 const positions = await res.json();
@@ -140,81 +119,56 @@
                 if (positions.length > 0) {
                     const p = positions[0];
                     const newPos = [p.latitude, p.longitude];
+                    const angle = p.course || 0;
                     const speed = Math.round(p.speed * 1.852);
-                    lastNavLatLng = newPos;
 
-                    // --- FILTRAGE DURCI : 40m + 4km/h ---
-                    let shouldAddPoint = false;
-                    if (travelHistory.length === 0) shouldAddPoint = true; 
-                    else {
-                        const lastPoint = travelHistory[travelHistory.length - 1];
-                        const distanceMoved = map.distance(lastPoint, newPos);
-                        if (distanceMoved > 40 && speed > 4) shouldAddPoint = true;
-                    }
-
-                    if (shouldAddPoint) {
+                    // Mise à jour du tracé
+                    if (speed > 4) {
                         travelHistory.push(newPos);
-                        if (travelHistory.length > 100) travelHistory.shift(); 
                         historyLine.setLatLngs(travelHistory);
                     }
 
-                    if (autoCenter) map.panTo(newPos, { animate: true });
+                    // Nouveau designateur avec rotation de la flèche
+                    const customHtml = `
+                        <div class="navette-loader">
+                            <div class="bus-circle">
+                                <img src="images/icon_bus_black.png" width="30">
+                            </div>
+                            <div class="direction-arrow" style="transform: rotate(${angle - 90}deg);"></div>
+                        </div>`;
 
-                    let inZone = false, zoneName = "";
-                    hotelsData.forEach(h => { if (map.distance(newPos, h.coords) < 100) { inZone = true; zoneName = h.name; } });
-                    
-                    if (inZone) {
-                        banner.className = "status-sub-header status-alert";
-                        banner.innerHTML = `⚠️ ARRIVÉE : ${zoneName.toUpperCase()}`;
-                    } else {
-                        banner.className = "status-sub-header status-ok";
-                        banner.innerHTML = `VITESSE : ${speed} km/h`;
+                    const navIcon = L.divIcon({ html: customHtml, className: '', iconSize: [60, 60], iconAnchor: [30, 30] });
+
+                    if (!navetteMarker) navetteMarker = L.marker(newPos, { icon: navIcon }).addTo(map);
+                    else {
+                        navetteMarker.setLatLng(newPos);
+                        navetteMarker.setIcon(navIcon);
                     }
 
-                    if (!navetteMarker) {
-                        navetteMarker = L.marker(newPos, { 
-                            icon: L.icon({ iconUrl: 'images/logonavettebleu.png', iconSize: [110, 110], iconAnchor: [55, 55] }) 
-                        }).addTo(map);
-                    } else navetteMarker.setLatLng(newPos);
+                    if (autoCenter) map.panTo(newPos);
+                    document.getElementById('connection-banner').innerHTML = `VITESSE : ${speed} km/h`;
                 }
-            } catch (e) { console.log("Erreur API"); }
-        }
-
-        function changeShuttle(id) {
-            currentDeviceId = id;
-            clearHistory();
-            if (navetteMarker) { map.removeLayer(navetteMarker); navetteMarker = null; }
-            updatePosition();
-        }
-
-        function clearHistory() { travelHistory = []; historyLine.setLatLngs([]); }
-
-        async function updateWeather() {
-            try {
-                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.61&current_weather=true');
-                const data = await res.json();
-                document.getElementById('weather-temp').textContent = `${Math.round(data.current_weather.temperature)}°C`;
-            } catch(e) { document.getElementById('weather-temp').textContent = "--°C"; }
+            } catch (e) { console.error("Erreur de connexion"); }
         }
 
         function toggleAutoCenter() {
             autoCenter = !autoCenter;
-            if (autoCenter && lastNavLatLng) map.flyTo(lastNavLatLng, 17);
             document.getElementById('recenter-navette').classList.toggle('active', autoCenter);
         }
 
         function recenterUser() {
-            if (userMarker) { autoCenter = false; map.flyTo(userMarker.getLatLng(), 17); document.getElementById('recenter-navette').classList.remove('active'); }
+            if (userMarker) { 
+                autoCenter = false; 
+                document.getElementById('recenter-navette').classList.remove('active');
+                map.flyTo(userMarker.getLatLng(), 17); 
+            }
         }
 
-        function updateClock() {
-            document.getElementById('current-time').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        }
+        function clearHistory() { travelHistory = []; historyLine.setLatLngs([]); }
+        function changeShuttle(id) { currentDeviceId = id; clearHistory(); updatePosition(); }
 
         setInterval(updatePosition, 3000);
-        setInterval(updateClock, 1000);
-        setInterval(updateWeather, 1800000);
-        updatePosition(); updateClock(); updateWeather();
+        updatePosition();
     </script>
 </body>
 </html>
