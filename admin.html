@@ -2,32 +2,31 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ADMIN - Gestion des Navettes</title>
+    <title>ADMIN - Gestion Flotte 369</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --primary: #005587; --success: #2ecc71; --dark: #333; }
-        #map { height: 100vh; width: 100%; background: #e5e3df; z-index: 1; }
-        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', Roboto, sans-serif; }
-        
-        /* Écran de verrouillage */
+        :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --dark: #1a1a1a; }
+        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; }
+        #map { height: 100vh; width: 100%; z-index: 1; }
+
+        /* Verrouillage PIN */
         #pin-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #1a1a1a; z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: white;
+            background: var(--dark); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; color: white;
         }
-        #pin-display { font-size: 24px; margin-bottom: 20px; letter-spacing: 5px; color: var(--success); height: 30px; }
-        .keypad { display: grid; grid-template-columns: repeat(3, 80px); gap: 15px; }
+        #pin-display { font-size: 32px; margin-bottom: 20px; letter-spacing: 8px; color: var(--success); height: 40px; }
+        .keypad { display: grid; grid-template-columns: repeat(3, 75px); gap: 15px; }
         .key {
-            width: 80px; height: 80px; background: #333; border-radius: 50%;
+            width: 75px; height: 75px; background: #333; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-size: 24px; font-weight: bold; cursor: pointer; border: 1px solid #444;
         }
         .key:active { background: var(--primary); }
 
-        /* Panneau Admin Latéral */
+        /* Panneau Latéral */
         #admin-panel {
             position: absolute; top: 0; left: -320px; width: 300px; height: 100%;
             background: white; z-index: 2000; box-shadow: 5px 0 15px rgba(0,0,0,0.3);
@@ -38,23 +37,20 @@
             position: absolute; top: 20px; right: -55px; width: 55px; height: 50px;
             background: var(--primary); border-radius: 0 10px 10px 0;
             display: flex; align-items: center; justify-content: center; cursor: pointer;
-            box-shadow: 5px 0 10px rgba(0,0,0,0.1);
         }
 
-        /* Liste des Navettes */
+        /* Liste Navettes */
         .panel-content { padding: 20px; }
         .shuttle-card {
-            background: #f8f9fa; border-radius: 12px; padding: 15px;
-            margin-bottom: 15px; border: 1px solid #eee;
+            background: #fff; border-radius: 12px; padding: 15px;
+            margin-bottom: 15px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             display: flex; align-items: center; justify-content: space-between;
         }
-        .shuttle-meta { display: flex; flex-direction: column; gap: 4px; }
-        .shuttle-name { font-weight: bold; font-size: 16px; color: var(--dark); }
-        .shuttle-stats { font-size: 12px; color: #666; }
-        .batt-icon { font-weight: bold; color: var(--success); }
+        .shuttle-name { font-weight: bold; display: block; margin-bottom: 4px; }
+        .shuttle-stats { font-size: 11px; color: #666; }
 
         /* Switch Toggle */
-        .switch { position: relative; width: 50px; height: 26px; }
+        .switch { position: relative; width: 46px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider {
             position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
@@ -62,151 +58,149 @@
         }
         input:checked + .slider { background-color: var(--success); }
         .slider:before {
-            position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
             background-color: white; transition: .4s; border-radius: 50%;
         }
-        input:checked + .slider:before { transform: translateX(24px); }
+        input:checked + .slider:before { transform: translateX(22px); }
 
-        /* Icone Navette sur la carte */
+        /* Icone Map */
         .bus-circle {
             width: 38px; height: 38px; background: white; border-radius: 50%;
             border: 3px solid var(--primary); display: flex; align-items: center; 
-            justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
         .bus-circle img { width: 24px !important; height: 24px !important; object-fit: contain; }
-
-        .header-time {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: white; padding: 10px 25px; border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-weight: bold; font-size: 18px;
-        }
     </style>
 </head>
 <body>
 
     <div id="pin-overlay">
         <h2 style="margin-bottom:5px;">SESSION ADMIN</h2>
-        <p style="opacity:0.6; margin-bottom:20px;">Chef Voiturier - 369 Shuttles</p>
         <div id="pin-display"></div>
         <div class="keypad">
             <div class="key" onclick="pressKey('1')">1</div><div class="key" onclick="pressKey('2')">2</div><div class="key" onclick="pressKey('3')">3</div>
             <div class="key" onclick="pressKey('4')">4</div><div class="key" onclick="pressKey('5')">5</div><div class="key" onclick="pressKey('6')">6</div>
             <div class="key" onclick="pressKey('7')">7</div><div class="key" onclick="pressKey('8')">8</div><div class="key" onclick="pressKey('9')">9</div>
-            <div class="key" onclick="pressKey('C')" style="color:#ff4444">C</div><div class="key" onclick="pressKey('0')">0</div><div class="key" onclick="pressKey('OK')" style="color:var(--success)">OK</div>
+            <div class="key" onclick="pressKey('C')" style="color:var(--danger)">C</div><div class="key" onclick="pressKey('0')">0</div><div class="key" onclick="pressKey('OK')" style="color:var(--success)">OK</div>
         </div>
     </div>
 
     <div id="admin-panel">
-        <div class="admin-handle" onclick="document.getElementById('admin-panel').classList.toggle('open')">
-            <img src="images/focus.png" width="25" style="filter: invert(1);">
-        </div>
+        <div class="admin-handle" onclick="document.getElementById('admin-panel').classList.toggle('open')">⚙️</div>
         <div class="panel-content">
-            <h2 style="color:var(--primary); margin-top:0;">Gestion Flotte</h2>
-            <hr border="0" height="1" style="background:#eee; margin: 20px 0;">
+            <h2 style="color:var(--primary);">Chef Voiturier</h2>
             <div id="shuttle-list"></div>
-            <p style="font-size: 11px; color: #999; margin-top: 40px;">Mode Admin : Les changements impactent la vue client.</p>
-            <button onclick="location.reload()" style="width:100%; padding:12px; border:none; background:#eee; border-radius:8px; cursor:pointer;">🔒 Déconnexion</button>
+            <button onclick="location.reload()" style="width:100%; padding:12px; margin-top:20px; border:none; background:#eee; border-radius:8px; cursor:pointer;">🔒 Quitter la session</button>
         </div>
     </div>
 
-    <div class="header-time" id="clock">--:--</div>
     <div id="map"></div>
 
     <script>
-        const PIN_SECRET = "3690"; // VOTRE CODE ICI
+        const PIN_SECRET = "3690";
         let currentPin = "";
-        
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
 
-        const availableShuttles = [
-            { id: '4', name: 'Navette 4', active: true, marker: null },
-            { id: '1', name: 'Navette 1', active: false, marker: null }
+        // Liste des IDs Traccar réels
+        const shuttles = [
+            { id: 4, name: 'Navette 4', marker: null, active: false },
+            { id: 1, name: 'Navette 1', marker: null, active: false }
         ];
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Gestion Clavier PIN
         function pressKey(num) {
             if (num === 'C') currentPin = "";
             else if (num === 'OK') {
-                if (currentPin === PIN_SECRET) {
-                    document.getElementById('pin-overlay').style.display = 'none';
-                } else {
-                    alert("Code incorrect");
-                    currentPin = "";
-                }
-            } else if (currentPin.length < 4) {
-                currentPin += num;
-            }
+                if (currentPin === PIN_SECRET) document.getElementById('pin-overlay').style.display = 'none';
+                else { alert("Code incorrect"); currentPin = ""; }
+            } else if (currentPin.length < 4) currentPin += num;
             document.getElementById('pin-display').innerText = "•".repeat(currentPin.length);
         }
 
-        // Création dynamique de la liste
-        function initAdminList() {
+        async function initAdmin() {
             const container = document.getElementById('shuttle-list');
-            availableShuttles.forEach(s => {
+            
+            // On récupère d'abord l'état actuel sur Traccar
+            const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
+            const devices = await res.json();
+
+            shuttles.forEach(s => {
+                const device = devices.find(d => d.id === s.id);
+                // Si hideClient n'existe pas ou est false, la navette est "Active" (On)
+                s.active = device ? !device.attributes.hideClient : true;
+
                 const card = document.createElement('div');
                 card.className = 'shuttle-card';
                 card.innerHTML = `
                     <div class="shuttle-meta">
                         <span class="shuttle-name">${s.name}</span>
-                        <span id="stat-${s.id}" class="shuttle-stats">Connexion...</span>
+                        <span id="stat-${s.id}" class="shuttle-stats">Chargement...</span>
                     </div>
                     <label class="switch">
-                        <input type="checkbox" ${s.active ? 'checked' : ''} onchange="updateShuttleStatus('${s.id}', this.checked)">
+                        <input type="checkbox" id="check-${s.id}" ${s.active ? 'checked' : ''} onchange="toggleShuttle(${s.id}, this.checked)">
                         <span class="slider"></span>
                     </label>
                 `;
                 container.appendChild(card);
             });
+            updateData();
         }
 
-        async function updateMapPositions() {
-            for (let s of availableShuttles) {
-                if (!s.active) {
-                    if (s.marker) { map.removeLayer(s.marker); s.marker = null; }
-                    document.getElementById(`stat-${s.id}`).innerHTML = `<span style="color:#ff4444">HORS SERVICE</span>`;
-                    continue;
-                }
+        async function toggleShuttle(deviceId, isVisible) {
+            try {
+                // 1. Récupérer le device complet
+                const res = await fetch(`${TRACCAR_URL}/api/devices?id=${deviceId}`, { headers: { 'Authorization': AUTH } });
+                const devices = await res.json();
+                const device = devices[0];
 
+                // 2. Mettre à jour l'attribut hideClient (On = visible = hideClient:false)
+                device.attributes.hideClient = !isVisible;
+
+                // 3. Envoyer la mise à jour
+                await fetch(`${TRACCAR_URL}/api/devices/${deviceId}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(device)
+                });
+
+                // Mettre à jour l'état local pour la carte admin
+                const s = shuttles.find(sh => sh.id === deviceId);
+                s.active = isVisible;
+                if (!isVisible && s.marker) { map.removeLayer(s.marker); s.marker = null; }
+                
+            } catch (e) { alert("Erreur de synchronisation Traccar"); }
+        }
+
+        async function updateData() {
+            for (let s of shuttles) {
                 try {
-                    const res = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${s.id}`, { headers: { 'Authorization': AUTH } });
-                    const positions = await res.json();
+                    const resPos = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${s.id}`, { headers: { 'Authorization': AUTH } });
+                    const positions = await resPos.json();
+                    
                     if (positions.length > 0) {
                         const p = positions[0];
                         const batt = p.attributes.batteryLevel || "--";
-                        document.getElementById(`stat-${s.id}`).innerHTML = `
-                            <span class="batt-icon">🔋 ${batt}%</span> | ${Math.round(p.speed*1.852)} km/h
-                        `;
+                        document.getElementById(`stat-${s.id}`).innerHTML = `🔋 ${batt}% | ${Math.round(p.speed*1.852)} km/h`;
 
-                        if (!s.marker) {
-                            const html = `<div class="bus-circle"><img src="images/van.png"></div>`;
-                            const icon = L.divIcon({ html: html, className: '', iconSize: [40, 40], iconAnchor: [20, 20] });
-                            s.marker = L.marker([p.latitude, p.longitude], { icon: icon }).addTo(map);
-                        } else {
-                            s.marker.setLatLng([p.latitude, p.longitude]);
+                        // Affichage sur la carte Admin (seulement si le switch est ON)
+                        if (s.active) {
+                            if (!s.marker) {
+                                const html = `<div class="bus-circle"><img src="images/van.png"></div>`;
+                                s.marker = L.marker([p.latitude, p.longitude], { icon: L.divIcon({ html: html, className: '', iconSize: [40, 40], iconAnchor: [20, 20] }) }).addTo(map);
+                            } else {
+                                s.marker.setLatLng([p.latitude, p.longitude]);
+                            }
                         }
                     }
-                } catch (e) { console.log("Erreur API"); }
+                } catch (e) { console.log("Erreur de données"); }
             }
         }
 
-        function updateShuttleStatus(id, checked) {
-            const shuttle = availableShuttles.find(s => s.id === id);
-            shuttle.active = checked;
-            updateMapPositions();
-        }
-
-        function tick() {
-            document.getElementById('clock').innerText = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        }
-
-        initAdminList();
-        setInterval(updateMapPositions, 3000);
-        setInterval(tick, 1000);
-        updateMapPositions(); tick();
+        initAdmin();
+        setInterval(updateData, 3000);
     </script>
 </body>
 </html>
