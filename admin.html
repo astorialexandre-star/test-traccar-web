@@ -7,11 +7,11 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --primary: #005587; --success: #2ecc71; --dark: #1a1a1a; }
+        :root { --primary: #005587; --success: #2ecc71; --warning: #e67e22; --dark: #1a1a1a; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; }
         #map { height: 100vh; width: 100%; z-index: 1; }
 
-        /* Verrouillage PIN */
+        /* Écran de verrouillage */
         #pin-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--dark); z-index: 9999;
@@ -22,7 +22,7 @@
         .key { width: 75px; height: 75px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border: 1px solid #444; }
         .key:active { background: var(--primary); }
 
-        /* Panneau Latéral */
+        /* Panneau Latéral Admin */
         #admin-panel {
             position: absolute; top: 0; left: -320px; width: 300px; height: 100%;
             background: white; z-index: 2000; box-shadow: 5px 0 15px rgba(0,0,0,0.3);
@@ -33,8 +33,8 @@
 
         .panel-content { padding: 20px; }
         .shuttle-card { background: #fff; border-radius: 12px; padding: 12px; margin-bottom: 15px; border: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
-        .shuttle-name { font-weight: bold; display: block; color: var(--primary); font-size: 14px; }
-        .shuttle-stats { font-size: 11px; color: #666; }
+        .shuttle-name { font-weight: bold; color: var(--primary); font-size: 14px; }
+        .shuttle-stats { font-size: 11px; color: #666; display: block; }
 
         /* Switch Toggle */
         .switch { position: relative; width: 46px; height: 24px; flex-shrink: 0; }
@@ -44,9 +44,14 @@
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider:before { transform: translateX(22px); }
 
+        /* Contrôles Carte */
+        .map-controls { position: absolute; bottom: 30px; right: 20px; z-index: 1000; }
+        .control-btn { background: white; border: none; border-radius: 50%; width: 55px; height: 55px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
         /* Icones Navettes */
-        .bus-circle { width: 38px; height: 38px; background: white; border-radius: 50%; border: 3px solid var(--primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .bus-circle { width: 38px; height: 38px; background: white; border-radius: 50%; border: 3px solid var(--primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); position: relative; }
         .bus-circle img { width: 24px !important; height: 24px !important; object-fit: contain; }
+        .direction-arrow { position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 8px solid #333; left: 32px; transform-origin: -14px center; }
         
         #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--dark); color: white; padding: 10px 20px; border-radius: 20px; display: none; z-index: 5000; }
     </style>
@@ -54,7 +59,7 @@
 <body>
 
     <div id="pin-overlay">
-        <h2>ACCÈS CHEF VOITURIER</h2>
+        <h2>ACCÈS ADMIN</h2>
         <div id="pin-display"></div>
         <div class="keypad">
             <div class="key" onclick="press('1')">1</div><div class="key" onclick="press('2')">2</div><div class="key" onclick="press('3')">3</div>
@@ -69,12 +74,15 @@
         <div class="panel-content">
             <h2 style="margin-top:0; color: var(--primary);">Gestion Flotte</h2>
             <div id="shuttle-list"></div>
-            <p style="font-size: 11px; color: #999; text-align: center;">Mise à jour toutes les 3s</p>
             <button onclick="location.reload()" style="width:100%; padding:12px; margin-top:10px; border:none; background:#eee; border-radius:8px; cursor:pointer; font-weight: bold;">🔒 Verrouiller</button>
         </div>
     </div>
 
-    <div id="toast">Mise à jour réussie ✅</div>
+    <div class="map-controls">
+        <button class="control-btn" onclick="clearAllHistories()"><img src="images/delete.png" style="width:24px;"></button>
+    </div>
+
+    <div id="toast">Action réussie ✅</div>
     <div id="map"></div>
 
     <script>
@@ -84,17 +92,18 @@
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
 
         const shuttles = [
-            { id: 4, name: 'NAVETTE 4', marker: null, polyline: null, active: false },
-            { id: 1, name: 'NAVETTE 1', marker: null, polyline: null, active: false }
+            { id: 4, name: 'NAVETTE 4', marker: null, polyline: null, active: false, history: [], color: '#2ecc71' },
+            { id: 1, name: 'NAVETTE 1', marker: null, polyline: null, active: false, history: [], color: '#e67e22' }
         ];
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // --- DONNÉES DU CIRCUIT & ARRÊTS (Copie conforme client) ---
+        // Circuit GéoJSON
         const circuitData = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.629327,45.859227],[6.629352,45.859139],[6.629369,45.859059],[6.629361,45.858970],[6.629314,45.858899],[6.629255,45.858843],[6.629153,45.858796],[6.629030,45.858754],[6.628877,45.858692],[6.628690,45.858619],[6.628461,45.858521],[6.628291,45.858447],[6.628192,45.858403],[6.628052,45.858371],[6.627895,45.858341],[6.627708,45.858306],[6.627564,45.858276],[6.627428,45.858238],[6.627330,45.858181],[6.627224,45.858134],[6.627135,45.858081],[6.627004,45.858048],[6.626842,45.858051],[6.626753,45.858102],[6.626707,45.858187],[6.626766,45.858261],[6.626889,45.858353],[6.627059,45.858492],[6.627190,45.858595],[6.627313,45.858707],[6.627398,45.858778],[6.627564,45.858894],[6.627747,45.858956],[6.627937,45.859003],[6.628044,45.859062],[6.628073,45.859151],[6.627982,45.859270],[6.627848,45.859299],[6.627689,45.859269],[6.627551,45.859234]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.627548,45.859232],[6.627420,45.859201],[6.627136,45.859131],[6.626844,45.858992],[6.626603,45.858758],[6.626276,45.858611],[6.626118,45.858680],[6.626159,45.858863],[6.626514,45.859240],[6.626854,45.859639],[6.627108,45.859871],[6.627349,45.860312],[6.627438,45.860869],[6.627041,45.860568],[6.626224,45.860300],[6.626028,45.860097],[6.625535,45.859664],[6.625089,45.859361],[6.624640,45.859091],[6.624190,45.858753],[6.623778,45.858472]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.623778,45.858472],[6.623050,45.858262],[6.622379,45.858004],[6.621634,45.857747],[6.620984,45.857615],[6.620851,45.857641],[6.620729,45.857588],[6.620748,45.857562],[6.620658,45.857497],[6.620737,45.857529],[6.620898,45.857593],[6.620970,45.857613]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631599,45.853848],[6.631526,45.854377],[6.631436,45.855170],[6.631368,45.855894],[6.631256,45.856669],[6.631171,45.857162],[6.631103,45.857644],[6.631126,45.858208],[6.631247,45.858865],[6.631296,45.859061]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631295,45.859061],[6.631196,45.859342],[6.630607,45.859949],[6.630039,45.860571],[6.630101,45.860843],[6.630560,45.861179],[6.631005,45.861818],[6.631160,45.862401],[6.631349,45.862799],[6.631745,45.863157],[6.632047,45.863829],[6.632563,45.864357],[6.632827,45.864952],[6.633118,45.865281],[6.633651,45.865602],[6.633606,45.865833],[6.632256,45.865130],[6.631747,45.864633],[6.631235,45.864068],[6.630441,45.863589],[6.629704,45.863008],[6.629313,45.862561],[6.629117,45.862146],[6.628441,45.861607],[6.627921,45.861233],[6.627438,45.860869]]}}]}
         L.geoJSON(circuitData, { style: { color: '#3388ff', weight: 6, opacity: 0.4 } }).addTo(map);
 
+        // Arrêts
         const hotelsData = [
             { "name": "Mamie Megève", "icon": "images/logomamiemegeve.png", "coords": [45.8593, 6.6291] },
             { "name": "Mont d'Arbois", "icon": "images/logomontdarbois.png", "coords": [45.8538, 6.6317] },
@@ -106,7 +115,7 @@
             L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [60, 60], iconAnchor: [30, 60] }) }).addTo(map);
         });
 
-        // --- FONCTIONS ADMIN ---
+        // Fonctions Clavier PIN
         function press(num) {
             if (num === 'C') currentPin = "";
             else if (num === 'OK') {
@@ -118,91 +127,93 @@
 
         async function initAdmin() {
             const container = document.getElementById('shuttle-list');
-            const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
-            const devices = await res.json();
+            try {
+                const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
+                const devices = await res.json();
 
-            shuttles.forEach(s => {
-                const device = devices.find(d => d.id === s.id);
-                s.active = device ? !device.attributes.hideClient : true;
+                shuttles.forEach(s => {
+                    const device = devices.find(d => d.id === s.id);
+                    s.active = device ? !device.attributes.hideClient : true;
 
-                const card = document.createElement('div');
-                card.className = 'shuttle-card';
-                card.innerHTML = `
-                    <div class="shuttle-meta">
-                        <span class="shuttle-name">${s.name}</span>
-                        <span id="stat-${s.id}" class="shuttle-stats">Connexion...</span>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" ${s.active ? 'checked' : ''} onchange="toggleShuttle(${s.id}, this.checked)">
-                        <span class="slider"></span>
-                    </label>`;
-                container.appendChild(card);
-            });
-            updateData();
+                    const card = document.createElement('div');
+                    card.className = 'shuttle-card';
+                    card.innerHTML = `
+                        <div><span class="shuttle-name">${s.name}</span><span id="stat-${s.id}" class="shuttle-stats">MaJ...</span></div>
+                        <label class="switch">
+                            <input type="checkbox" ${s.active ? 'checked' : ''} onchange="toggleShuttle(${s.id}, this.checked)">
+                            <span class="slider"></span>
+                        </label>`;
+                    container.appendChild(card);
+                });
+                updateData();
+            } catch(e) { console.error("Erreur Init"); }
         }
 
-        async function toggleShuttle(deviceId, isVisible) {
+        async function toggleShuttle(id, visible) {
             try {
-                const res = await fetch(`${TRACCAR_URL}/api/devices?id=${deviceId}`, { headers: { 'Authorization': AUTH } });
+                const res = await fetch(`${TRACCAR_URL}/api/devices?id=${id}`, { headers: { 'Authorization': AUTH } });
                 const devices = await res.json();
                 const device = devices[0];
-                device.attributes.hideClient = !isVisible;
+                device.attributes.hideClient = !visible;
 
-                await fetch(`${TRACCAR_URL}/api/devices/${deviceId}`, {
+                await fetch(`${TRACCAR_URL}/api/devices/${id}`, {
                     method: 'PUT',
                     headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
                     body: JSON.stringify(device)
                 });
 
+                shuttles.find(s => s.id === id).active = visible;
                 const t = document.getElementById('toast'); t.style.display='block'; setTimeout(()=>t.style.display='none', 2000);
-                shuttles.find(sh => sh.id === deviceId).active = isVisible;
-                updateData();
-            } catch (e) { alert("Erreur de synchronisation"); }
+            } catch (e) { alert("Erreur serveur"); }
         }
 
         async function updateData() {
             for (let s of shuttles) {
                 try {
-                    // Récupération position + historique (1h)
-                    const now = new Date().toISOString();
-                    const hourAgo = new Date(Date.now() - 3600000).toISOString();
-                    const resPos = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${s.id}&from=${hourAgo}&to=${now}`, { headers: { 'Authorization': AUTH } });
-                    const positions = await resPos.json();
+                    const res = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${s.id}`, { headers: { 'Authorization': AUTH } });
+                    const positions = await res.json();
 
                     if (positions.length > 0) {
-                        const lastPos = positions[positions.length - 1];
-                        const latlngs = positions.map(p => [p.latitude, p.longitude]);
-                        
-                        document.getElementById(`stat-${s.id}`).innerHTML = `🔋 ${lastPos.attributes.batteryLevel || '--'}% | ${Math.round(lastPos.speed*1.852)} km/h`;
+                        const p = positions[0];
+                        const newPos = [p.latitude, p.longitude];
+                        const speed = Math.round(p.speed * 1.852);
+                        const angle = p.course || 0;
 
-                        // Mise à jour Tracé (Polyline)
-                        if (!s.polyline) {
-                            s.polyline = L.polyline(latlngs, { color: s.id === 4 ? '#2ecc71' : '#e67e22', weight: 4, opacity: 0.5, dashArray: '5, 10' }).addTo(map);
-                        } else {
-                            s.polyline.setLatLngs(latlngs);
+                        document.getElementById(`stat-${s.id}`).innerHTML = `🔋 ${p.attributes.batteryLevel || '--'}% | ${speed} km/h`;
+
+                        // Anti-Drift
+                        let shouldAdd = false;
+                        if (s.history.length === 0) shouldAdd = true;
+                        else {
+                            const last = s.history[s.history.length-1];
+                            if (map.distance(last, newPos) > 40 && speed > 4) shouldAdd = true;
                         }
 
-                        // Mise à jour Marqueur
-                        const customHtml = `
-                            <div class="bus-circle" style="border-color: ${s.id === 4 ? '#2ecc71' : '#e67e22'}">
-                                <img src="images/van.png">
-                            </div>`;
-
-                        if (!s.marker) {
-                            s.marker = L.marker([lastPos.latitude, lastPos.longitude], { 
-                                icon: L.divIcon({ html: customHtml, className: '', iconSize: [40, 40], iconAnchor: [20, 20] }),
-                                zIndexOffset: 1000 
-                            }).addTo(map);
-                        } else {
-                            s.marker.setLatLng([lastPos.latitude, lastPos.longitude]);
+                        if (shouldAdd) {
+                            s.history.push(newPos);
+                            if (s.history.length > 100) s.history.shift();
+                            if (!s.polyline) {
+                                s.polyline = L.polyline(s.history, { color: s.color, weight: 4, opacity: 0.5, dashArray: '5, 10' }).addTo(map);
+                            } else s.polyline.setLatLngs(s.history);
                         }
 
-                        // Gestion visibilité sur la carte admin (on laisse les navettes même si hideClient est true, mais on peut les griser si besoin)
-                        s.marker.setOpacity(s.active ? 1 : 0.4);
-                        s.polyline.setStyle({ opacity: s.active ? 0.5 : 0.1 });
+                        // Marker
+                        const iconHtml = `<div class="bus-circle" style="border-color:${s.color}"><img src="images/van.png"><div class="direction-arrow" style="transform:rotate(${angle-90}deg)"></div></div>`;
+                        const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [40, 40], iconAnchor: [20, 20] });
+
+                        if (!s.marker) s.marker = L.marker(newPos, { icon: icon, zIndexOffset: 1000 }).addTo(map);
+                        else { s.marker.setLatLng(newPos); s.marker.setIcon(icon); }
+
+                        s.marker.setOpacity(s.active ? 1 : 0.3);
+                        if (s.polyline) s.polyline.setStyle({ opacity: s.active ? 0.5 : 0.1 });
                     }
-                } catch (e) { console.log("Erreur API"); }
+                } catch(e) { console.log("MaJ Error"); }
             }
+        }
+
+        function clearAllHistories() {
+            shuttles.forEach(s => { s.history = []; if (s.polyline) s.polyline.setLatLngs([]); });
+            const t = document.getElementById('toast'); t.innerText = "Tracés effacés"; t.style.display='block'; setTimeout(()=>t.style.display='none', 2000);
         }
 
         initAdmin();
