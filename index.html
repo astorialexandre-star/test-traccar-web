@@ -38,6 +38,13 @@
         .status-ok { background: white; color: #27ae60; border: 1px solid #2ecc71; }
         .status-alert { background: #e67e22; color: white; border: 1px solid #d35400; animation: blink 1s infinite; }
 
+        /* Message d'indisponibilité si hideClient est true */
+        #error-msg {
+            position: fixed; top: 55%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 25px; border-radius: 15px; text-align: center;
+            display: none; z-index: 2000; border: 2px solid #005587; box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+
         /* Contrôles à droite */
         .map-controls { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
         .control-btn {
@@ -49,22 +56,15 @@
         #recenter-navette.active { background: #3388ff; }
         #recenter-navette.active img { filter: invert(1); }
 
-        /* DESIGN DE L'ICÔNE VAN (TAILLE RÉDUITE ET VERROUILLÉE) */
+        /* DESIGN DE L'ICÔNE VAN */
         .navette-custom-icon { display: flex; align-items: center; justify-content: center; }
-        
         .bus-circle {
             width: 38px; height: 38px; background: white; border-radius: 50%;
             border: 3px solid #005587; display: flex; align-items: center; 
             justify-content: center; z-index: 2; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             overflow: hidden;
         }
-
-        /* ICI : On force l'image du van à ne pas dépasser 24px */
-        .bus-circle img { 
-            width: 24px !important; 
-            height: 24px !important; 
-            object-fit: contain;
-        }
+        .bus-circle img { width: 24px !important; height: 24px !important; object-fit: contain; }
 
         .direction-arrow {
             position: absolute; width: 0; height: 0; 
@@ -98,6 +98,11 @@
     </div>
 
     <div id="connection-banner" class="status-sub-header status-ok">VITESSE : 0 km/h</div>
+
+    <div id="error-msg">
+        <h3 style="margin:0; color:#005587;">NAVETTE HORS SERVICE</h3>
+        <p style="font-size:14px; color:#666;">Ce véhicule n'est pas en circulation actuellement.</p>
+    </div>
 
     <div class="map-controls">
         <button class="control-btn" title="Effacer le tracé" onclick="clearHistory()"><img src="images/delete.png"></button>
@@ -147,9 +152,29 @@
 
         async function updatePosition() {
             const banner = document.getElementById('connection-banner');
+            const errorMsg = document.getElementById('error-msg');
+            
             try {
-                const res = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
-                const positions = await res.json();
+                // 1. VÉRIFICATION VISIBILITÉ (Attribut hideClient)
+                const resDev = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
+                const devices = await resDev.json();
+                const device = devices[0];
+
+                if (device.attributes.hideClient === true) {
+                    // Masquer la navette et son tracé
+                    if (navetteMarker) { map.removeLayer(navetteMarker); navetteMarker = null; }
+                    clearHistory();
+                    errorMsg.style.display = 'block';
+                    banner.style.display = 'none';
+                    return;
+                } else {
+                    errorMsg.style.display = 'none';
+                    banner.style.display = 'block';
+                }
+
+                // 2. RÉCUPÉRATION DE LA POSITION
+                const resPos = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
+                const positions = await resPos.json();
                 
                 if (positions.length > 0) {
                     const p = positions[0];
@@ -185,7 +210,6 @@
                         banner.innerHTML = `VITESSE : ${speed} km/h`;
                     }
 
-                    // --- MISE À JOUR ICONE ---
                     const customHtml = `
                         <div class="navette-custom-icon">
                             <div class="bus-circle">
@@ -202,7 +226,7 @@
                     });
 
                     if (!navetteMarker) {
-                        navetteMarker = L.marker(newPos, { icon: navetteIcon }).addTo(map);
+                        navetteMarker = L.marker(newPos, { icon: navetteIcon, zIndexOffset: 1000 }).addTo(map);
                     } else {
                         navetteMarker.setLatLng(newPos);
                         navetteMarker.setIcon(navetteIcon);
