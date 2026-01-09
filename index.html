@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>369 Shuttles - Suivi Navettes</title>
+    <title>369 Shuttles - Suivi Client</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -10,7 +10,6 @@
         #map { height: 100vh; width: 100%; background: #e5e3df; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         
-        /* Header dynamique */
         .status-header {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: white; padding: 12px 20px; border-radius: 25px; 
@@ -19,27 +18,27 @@
         .dot { height: 10px; width: 10px; background-color: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-        /* Sélecteur de navette */
         .selector-box {
             position: absolute; top: 80px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: white; padding: 8px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         select { border: none; font-weight: bold; color: #005587; outline: none; font-size: 14px; cursor: pointer; }
 
-        /* Message d'indisponibilité */
         #error-msg {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 15px;
-            text-align: center; display: none; z-index: 2000; border: 2px solid #005587;
+            background: white; padding: 25px; border-radius: 15px;
+            text-align: center; display: none; z-index: 2000; border: 2px solid #005587; box-shadow: 0 0 20px rgba(0,0,0,0.2);
         }
 
-        /* Style icône van */
         .bus-circle {
             width: 38px; height: 38px; background: white; border-radius: 50%;
             border: 3px solid #005587; display: flex; align-items: center; justify-content: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
         .bus-circle img { width: 24px !important; height: 24px !important; }
+
+        /* Style pour les arrêts */
+        .stop-icon { background: white; border: 2px solid #005587; border-radius: 50%; }
     </style>
 </head>
 <body>
@@ -69,53 +68,85 @@
         
         let currentId = '4'; 
         let marker;
+        let routeLine;
+        const stopsLayer = L.layerGroup();
+
+        // Coordonnées de vos arrêts (Exemple à adapter selon votre itinéraire)
+        const stops = [
+            { name: "Hôtel", lat: 45.8590, lon: 6.6285 },
+            { name: "Arrêt 1", lat: 45.8575, lon: 6.6310 },
+            { name: "Arrêt 2", lat: 45.8550, lon: 6.6340 }
+        ];
+
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+        stopsLayer.addTo(map);
+
+        // Dessiner les arrêts une seule fois
+        function drawStops() {
+            stopsLayer.clearLayers();
+            stops.forEach(stop => {
+                L.circleMarker([stop.lat, stop.lon], {
+                    radius: 6, color: '#005587', fillColor: 'white', fillOpacity: 1, weight: 3
+                }).bindPopup(stop.name).addTo(stopsLayer);
+            });
+        }
 
         async function updateClientView() {
             try {
-                // 1. Lire l'état de l'attribut hideClient
+                // 1. Vérification visibilité
                 const resDev = await fetch(`${TRACCAR_URL}/api/devices?id=${currentId}`, { headers: { 'Authorization': AUTH } });
                 const devices = await resDev.json();
                 const device = devices[0];
 
-                const isHidden = device.attributes.hideClient === true;
-
-                if (isHidden) {
-                    // Masquer le marqueur et afficher le message
+                if (device.attributes.hideClient === true) {
                     if (marker) { map.removeLayer(marker); marker = null; }
+                    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
                     document.getElementById('error-msg').style.display = 'block';
                     return;
                 } else {
                     document.getElementById('error-msg').style.display = 'none';
                 }
 
-                // 2. Si visible, récupérer la position
-                const resPos = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${currentId}`, { headers: { 'Authorization': AUTH } });
-                const positions = await resPos.json();
+                // 2. Récupération historique pour le tracé (Polyline)
+                const now = new Date().toISOString();
+                const hourAgo = new Date(Date.now() - 3600000).toISOString();
+                const resHistory = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${currentId}&from=${hourAgo}&to=${now}`, { headers: { 'Authorization': AUTH } });
+                const history = await resHistory.json();
 
-                if (positions.length > 0) {
-                    const p = positions[0];
-                    const latlng = [p.latitude, p.longitude];
+                if (history.length > 0) {
+                    const latlngs = history.map(p => [p.latitude, p.longitude]);
+                    
+                    // Mise à jour du tracé
+                    if (routeLine) {
+                        routeLine.setLatLngs(latlngs);
+                    } else {
+                        routeLine = L.polyline(latlngs, { color: '#005587', weight: 4, opacity: 0.6, dashArray: '5, 10' }).addTo(map);
+                    }
+
+                    // Mise à jour du marqueur (Dernière position)
+                    const lastPos = history[history.length - 1];
+                    const currentPos = [lastPos.latitude, lastPos.longitude];
 
                     if (!marker) {
-                        marker = L.marker(latlng, {
+                        marker = L.marker(currentPos, {
                             icon: L.divIcon({
                                 html: '<div class="bus-circle"><img src="images/van.png"></div>',
                                 className: '', iconSize: [40, 40], iconAnchor: [20, 20]
                             })
                         }).addTo(map);
                     } else {
-                        marker.setLatLng(latlng);
+                        marker.setLatLng(currentPos);
                     }
-                    map.panTo(latlng);
+                    map.panTo(currentPos);
                 }
-            } catch (e) { console.error("Erreur de mise à jour"); }
+            } catch (e) { console.error("Erreur de rafraîchissement"); }
         }
 
         function switchNavette(id) {
             currentId = id;
             if (marker) { map.removeLayer(marker); marker = null; }
+            if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
             updateClientView();
         }
 
@@ -123,6 +154,7 @@
             document.getElementById('clock').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         }
 
+        drawStops();
         setInterval(updateClientView, 3000);
         setInterval(updateClock, 1000);
         updateClientView(); updateClock();
