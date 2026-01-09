@@ -32,7 +32,7 @@
             display: flex; flex-direction: column; align-items: center; background: transparent; color: #666;
         }
         .sw-btn.active { background: #005587; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .sw-btn.hidden { display: none; } /* Cache le bouton si la navette est offline */
+        .sw-btn.hidden { display: none; } 
         .sw-status { font-size: 9px; text-transform: uppercase; margin-top: 2px; opacity: 0.8; }
 
         /* Message si RIEN n'est en service */
@@ -110,20 +110,17 @@
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
         
-        const shuttleConfig = [
-            { id: 4, name: "NAVETTE 4" },
-            { id: 1, name: "NAVETTE 1" }
-        ];
+        const shuttleConfig = [ { id: 4, name: "NAVETTE 4" }, { id: 1, name: "NAVETTE 1" } ];
 
         let shuttles = {}; 
-        let followId = 4; // Par défaut on suit la 4
+        let followId = 4; 
         let autoCenter = true;
         let userMarker = null;
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Circuit & Hotels (Tracé bleu)
+        // Tracé Circuit (GeoJSON fourni précédemment)
         const circuitData = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.629327,45.859227],[6.629352,45.859139],[6.629369,45.859059],[6.629361,45.858970],[6.629314,45.858899],[6.629255,45.858843],[6.629153,45.858796],[6.629030,45.858754],[6.628877,45.858692],[6.628690,45.858619],[6.628461,45.858521],[6.628291,45.858447],[6.628192,45.858403],[6.628052,45.858371],[6.627895,45.858341],[6.627708,45.858306],[6.627564,45.858276],[6.627428,45.858238],[6.627330,45.858181],[6.627224,45.858134],[6.627135,45.858081],[6.627004,45.858048],[6.626842,45.858051],[6.626753,45.858102],[6.626707,45.858187],[6.626766,45.858261],[6.626889,45.858353],[6.627059,45.858492],[6.627190,45.858595],[6.627313,45.858707],[6.627398,45.858778],[6.627564,45.858894],[6.627747,45.858956],[6.627937,45.859003],[6.628044,45.859062],[6.628073,45.859151],[6.627982,45.859270],[6.627848,45.859299],[6.627689,45.859269],[6.627551,45.859234]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.627548,45.859232],[6.627420,45.859201],[6.627136,45.859131],[6.626844,45.858992],[6.626603,45.858758],[6.626276,45.858611],[6.626118,45.858680],[6.626159,45.858863],[6.626514,45.859240],[6.626854,45.859639],[6.627108,45.859871],[6.627349,45.860312],[6.627438,45.860869],[6.627041,45.860568],[6.626224,45.860300],[6.626028,45.860097],[6.625535,45.859664],[6.625089,45.859361],[6.624640,45.859091],[6.624190,45.858753],[6.623778,45.858472]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.623778,45.858472],[6.623050,45.858262],[6.622379,45.858004],[6.621634,45.857747],[6.620984,45.857615],[6.620851,45.857641],[6.620729,45.857588],[6.620748,45.857562],[6.620658,45.857497],[6.620737,45.857529],[6.620898,45.857593],[6.620970,45.857613]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631599,45.853848],[6.631526,45.854377],[6.631436,45.855170],[6.631368,45.855894],[6.631256,45.856669],[6.631171,45.857162],[6.631103,45.857644],[6.631126,45.858208],[6.631247,45.858865],[6.631296,45.859061]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631295,45.859061],[6.631196,45.859342],[6.630607,45.859949],[6.630039,45.860571],[6.630101,45.860843],[6.630560,45.861179],[6.631005,45.861818],[6.631160,45.862401],[6.631349,45.862799],[6.631745,45.863157],[6.632047,45.863829],[6.632563,45.864357],[6.632827,45.864952],[6.633118,45.865281],[6.633651,45.865602],[6.633606,45.865833],[6.632256,45.865130],[6.631747,45.864633],[6.631235,45.864068],[6.630441,45.863589],[6.629704,45.863008],[6.629313,45.862561],[6.629117,45.862146],[6.628441,45.861607],[6.627921,45.861233],[6.627438,45.860869]]}}]}
         L.geoJSON(circuitData, { style: { color: '#3388ff', weight: 6, opacity: 0.3 } }).addTo(map);
 
@@ -135,7 +132,6 @@
         ];
         hotels.forEach(h => { L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [80, 80], iconAnchor: [40, 80] }) }).addTo(map); });
 
-        // Géoloc
         map.on('locationfound', (e) => {
             if (!userMarker) userMarker = L.marker(e.latlng, { icon: L.divIcon({ className: 'user-location-dot' }) }).addTo(map);
             else userMarker.setLatLng(e.latlng);
@@ -168,10 +164,7 @@
 
                         const latlng = [pos.latitude, pos.longitude];
                         if (!shuttles[conf.id]) {
-                            shuttles[conf.id] = {
-                                line: L.polyline([], {color: '#2ecc71', weight: 5, opacity: 0.6}).addTo(map),
-                                marker: L.marker(latlng).addTo(map)
-                            };
+                            shuttles[conf.id] = { marker: L.marker(latlng).addTo(map) };
                         }
                         
                         shuttles[conf.id].marker.setLatLng(latlng);
@@ -183,7 +176,6 @@
                         btn.classList.add('hidden');
                         if (shuttles[conf.id]) {
                             map.removeLayer(shuttles[conf.id].marker);
-                            map.removeLayer(shuttles[conf.id].line);
                             delete shuttles[conf.id];
                         }
                     }
@@ -192,12 +184,18 @@
                 document.getElementById('error-msg').style.display = activeCount === 0 ? 'block' : 'none';
                 document.getElementById('switcher').style.display = activeCount === 0 ? 'none' : 'flex';
 
-                // Si la navette suivie disparaît, on bascule sur l'autre
                 if (activeCount > 0 && !shuttles[followId]) {
                     followId = Object.keys(shuttles)[0] * 1;
                 }
-
             } catch (e) { console.log("Sync Error"); }
+        }
+
+        async function updateWeather() {
+            try {
+                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.61&current_weather=true');
+                const data = await res.json();
+                document.getElementById('weather-temp').textContent = `${Math.round(data.current_weather.temperature)}°C`;
+            } catch(e) { document.getElementById('weather-temp').textContent = "--°C"; }
         }
 
         function setFollow(id) {
@@ -223,7 +221,11 @@
 
         setInterval(updatePositions, 4000);
         setInterval(updateClock, 1000);
-        updatePositions(); updateClock();
+        setInterval(updateWeather, 1800000); // 30 min
+        
+        updatePositions(); 
+        updateClock(); 
+        updateWeather();
     </script>
 </body>
 </html>
