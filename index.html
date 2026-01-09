@@ -10,66 +10,46 @@
         #map { height: 100vh; width: 100%; background: #e5e3df; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; }
         
-        /* Header & Banner */
-        .status-header { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 85%; max-width: 400px; text-align: center; }
-        .shuttle-selector-container { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); z-index: 1001; width: 100%; display: flex; justify-content: center; }
-        #shuttle-select { padding: 8px 16px; border-radius: 20px; border: 2px solid #3388ff; font-weight: bold; background: white; cursor: pointer; font-size: 14px; }
-        .status-sub-header { position: absolute; top: 115px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 6px 15px; border-radius: 10px; font-size: 13px; font-weight: bold; min-width: 180px; text-align: center; background: white; border: 1px solid #2ecc71; color: #27ae60; }
-
-        /* Contrôles de Carte (Vos icônes) */
-        .map-controls { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px; }
-        .control-btn {
-            background: white; border: none; border-radius: 50%; width: 60px; height: 60px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer;
-            display: flex; align-items: center; justify-content: center; padding: 10px;
-        }
-        .control-btn img { width: 100%; height: 100%; object-fit: contain; }
-        #recenter-navette.active { border: 3px solid #3388ff; }
-
-        /* Designateur Navette avec van.png */
+        /* Designateur Navette Directionnel */
         .navette-custom-icon { display: flex; align-items: center; justify-content: center; }
+        
         .bus-circle {
             width: 50px; height: 50px; background: white; border-radius: 50%;
             border: 3px solid #005587; display: flex; align-items: center; 
             justify-content: center; z-index: 2; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
+
         .direction-arrow {
             position: absolute; width: 0; height: 0; 
             border-top: 10px solid transparent; border-bottom: 10px solid transparent;
-            border-left: 16px solid #333; left: 45px;
-            transform-origin: -20px center; z-index: 1;
+            border-left: 16px solid #333; 
+            left: 45px; 
+            transform-origin: -20px center; 
+            z-index: 1;
         }
+
+        /* Styles Header et Boutons */
+        .status-header { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 85%; max-width: 400px; text-align: center; }
+        .map-controls { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px; }
+        .control-btn { background: white; border: none; border-radius: 50%; width: 60px; height: 60px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 12px; }
+        .control-btn img { width: 100%; height: 100%; object-fit: contain; }
+        
+        /* État actif pour le bouton focus */
+        #recenter-navette.active { border: 3px solid #3388ff; padding: 9px; }
+
         .user-location-dot { width: 14px; height: 14px; background: #2196F3; border: 2px solid white; border-radius: 50%; }
     </style>
 </head>
 <body>
 
     <div class="status-header">
-        <div class="status-top">
-            <span id="current-time" style="font-weight:bold; font-size:18px;">--:--</span>
-            <span id="weather-temp" style="margin-left:10px; font-weight:bold;">--°C</span>
-        </div>
+        <span id="current-time" style="font-weight:bold; font-size:18px;">--:--</span>
     </div>
-
-    <div class="shuttle-selector-container">
-        <select id="shuttle-select" onchange="changeShuttle(this.value)">
-            <option value="4">NAVETTE 4</option>
-            <option value="1">NAVETTE 1</option>
-        </select>
-    </div>
-
-    <div id="connection-banner" class="status-sub-header">VITESSE : 0 km/h</div>
 
     <div class="map-controls">
-        <button class="control-btn" onclick="clearHistory()">
-            <img src="images/delete.png">
-        </button>
-        <button class="control-btn" onclick="recenterUser()">
-            <img src="images/location.png">
-        </button>
-        <button class="control-btn active" id="recenter-navette" onclick="toggleAutoCenter()">
-            <img src="images/focus.png">
-        </button>
+        <button class="control-btn" onclick="clearHistory()"><img src="images/delete.png"></button>
+        <button class="control-btn" onclick="recenterUser()"><img src="images/location.png"></button>
+        <button class="control-btn active" id="recenter-navette" onclick="toggleAutoCenter()"><img src="images/focus.png"></button>
     </div>
 
     <div id="map"></div>
@@ -79,15 +59,18 @@
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
         
         let currentDeviceId = '4'; 
-        let autoCenter = true;
         let navetteMarker, userMarker;
+        let autoCenter = true;
         let travelHistory = [];
         let historyLine;
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 16);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-        historyLine = L.polyline([], {color: '#2ecc71', weight: 6, opacity: 0.7}).addTo(map);
 
+        // Ligne de tracé (historique)
+        historyLine = L.polyline([], {color: '#2ecc71', weight: 5, opacity: 0.6}).addTo(map);
+
+        // Géolocalisation utilisateur
         map.on('locationfound', (e) => {
             if (!userMarker) userMarker = L.marker(e.latlng, { icon: L.divIcon({ className: 'user-location-dot' }) }).addTo(map);
             else userMarker.setLatLng(e.latlng);
@@ -103,9 +86,8 @@
                     const p = positions[0];
                     const newPos = [p.latitude, p.longitude];
                     const angle = p.course || 0;
-                    const speed = Math.round(p.speed * 1.852);
 
-                    // Mise à jour de l'icône directionnelle avec VOTRE van.png
+                    // --- BLOC ICONE AVEC VOTRE VAN.PNG ---
                     const customHtml = `
                         <div class="navette-custom-icon">
                             <div class="bus-circle">
@@ -114,38 +96,59 @@
                             <div class="direction-arrow" style="transform: rotate(${angle - 90}deg);"></div>
                         </div>`;
 
-                    const navIcon = L.divIcon({ html: customHtml, className: '', iconSize: [60, 60], iconAnchor: [30, 30] });
+                    const navetteIcon = L.divIcon({
+                        html: customHtml,
+                        className: '',
+                        iconSize: [60, 60],
+                        iconAnchor: [30, 30]
+                    });
 
-                    if (!navetteMarker) navetteMarker = L.marker(newPos, { icon: navIcon }).addTo(map);
-                    else {
+                    if (!navetteMarker) {
+                        navetteMarker = L.marker(newPos, { icon: navetteIcon }).addTo(map);
+                    } else {
                         navetteMarker.setLatLng(newPos);
-                        navetteMarker.setIcon(navIcon);
+                        navetteMarker.setIcon(navetteIcon); 
                     }
 
-                    if (autoCenter) map.panTo(newPos, { animate: true });
-                    document.getElementById('connection-banner').innerHTML = `VITESSE : ${speed} km/h`;
+                    // Ajout au tracé historique
+                    travelHistory.push(newPos);
+                    if (travelHistory.length > 50) travelHistory.shift();
+                    historyLine.setLatLngs(travelHistory);
+
+                    if (autoCenter) map.panTo(newPos);
                 }
-            } catch (e) { console.error("Erreur API"); }
+            } catch (e) { console.error("Erreur de mise à jour"); }
         }
 
+        // Fonctions des boutons
         function toggleAutoCenter() {
             autoCenter = !autoCenter;
             document.getElementById('recenter-navette').classList.toggle('active', autoCenter);
         }
 
         function recenterUser() {
-            if (userMarker) { 
-                autoCenter = false; 
+            if (userMarker) {
+                autoCenter = false;
                 document.getElementById('recenter-navette').classList.remove('active');
-                map.flyTo(userMarker.getLatLng(), 17); 
+                map.flyTo(userMarker.getLatLng(), 17);
             }
         }
 
-        function clearHistory() { travelHistory = []; historyLine.setLatLngs([]); }
-        function changeShuttle(id) { currentDeviceId = id; clearHistory(); updatePosition(); }
+        function clearHistory() {
+            travelHistory = [];
+            historyLine.setLatLngs([]);
+        }
+
+        // Mise à jour de l'heure
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        }
 
         setInterval(updatePosition, 3000);
+        setInterval(updateClock, 1000);
         updatePosition();
+        updateClock();
     </script>
 </body>
 </html>
