@@ -34,7 +34,7 @@
         .control-btn { background: white; border: none; border-radius: 50%; width: 60px; height: 60px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 12px; }
         .control-btn img { width: 100%; height: 100%; object-fit: contain; }
         
-        /* État actif pour le bouton focus */
+        /* Etat actif pour le bouton focus (bordure bleue) */
         #recenter-navette.active { border: 3px solid #3388ff; padding: 9px; }
 
         .user-location-dot { width: 14px; height: 14px; background: #2196F3; border: 2px solid white; border-radius: 50%; }
@@ -60,17 +60,17 @@
         
         let currentDeviceId = '4'; 
         let navetteMarker, userMarker;
-        let autoCenter = true;
+        let autoCenter = true; // Pour activer/désactiver le suivi auto
         let travelHistory = [];
         let historyLine;
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 16);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Ligne de tracé (historique)
+        // Ligne de tracé vert (historique)
         historyLine = L.polyline([], {color: '#2ecc71', weight: 5, opacity: 0.6}).addTo(map);
 
-        // Géolocalisation utilisateur
+        // Localisation de l'utilisateur
         map.on('locationfound', (e) => {
             if (!userMarker) userMarker = L.marker(e.latlng, { icon: L.divIcon({ className: 'user-location-dot' }) }).addTo(map);
             else userMarker.setLatLng(e.latlng);
@@ -87,7 +87,7 @@
                     const newPos = [p.latitude, p.longitude];
                     const angle = p.course || 0;
 
-                    // --- BLOC ICONE AVEC VOTRE VAN.PNG ---
+                    // --- MISE À JOUR DE L'ICÔNE AVEC VAN.PNG ---
                     const customHtml = `
                         <div class="navette-custom-icon">
                             <div class="bus-circle">
@@ -110,17 +110,18 @@
                         navetteMarker.setIcon(navetteIcon); 
                     }
 
-                    // Ajout au tracé historique
+                    // Ajout au tracé historique (max 100 points)
                     travelHistory.push(newPos);
-                    if (travelHistory.length > 50) travelHistory.shift();
+                    if (travelHistory.length > 100) travelHistory.shift();
                     historyLine.setLatLngs(travelHistory);
 
-                    if (autoCenter) map.panTo(newPos);
+                    if (autoCenter) map.panTo(newPos, {animate: true});
                 }
             } catch (e) { console.error("Erreur de mise à jour"); }
         }
 
-        // Fonctions des boutons
+        // --- FONCTIONS DES BOUTONS ---
+        
         function toggleAutoCenter() {
             autoCenter = !autoCenter;
             document.getElementById('recenter-navette').classList.toggle('active', autoCenter);
@@ -128,7 +129,7 @@
 
         function recenterUser() {
             if (userMarker) {
-                autoCenter = false;
+                autoCenter = false; // Désactiver le suivi auto pour laisser l'utilisateur regarder sa position
                 document.getElementById('recenter-navette').classList.remove('active');
                 map.flyTo(userMarker.getLatLng(), 17);
             }
@@ -139,7 +140,6 @@
             historyLine.setLatLngs([]);
         }
 
-        // Mise à jour de l'heure
         function updateClock() {
             const now = new Date();
             document.getElementById('current-time').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
