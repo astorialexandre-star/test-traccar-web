@@ -2,12 +2,12 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ADMIN - Gestion Flotte 369</title>
+    <title>ADMIN - 369 Shuttles</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --dark: #1a1a1a; }
+        :root { --primary: #005587; --success: #2ecc71; --dark: #1a1a1a; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; }
         #map { height: 100vh; width: 100%; z-index: 1; }
 
@@ -19,81 +19,61 @@
         }
         #pin-display { font-size: 32px; margin-bottom: 20px; letter-spacing: 8px; color: var(--success); height: 40px; }
         .keypad { display: grid; grid-template-columns: repeat(3, 75px); gap: 15px; }
-        .key {
-            width: 75px; height: 75px; background: #333; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 24px; font-weight: bold; cursor: pointer; border: 1px solid #444;
-        }
+        .key { width: 75px; height: 75px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border: 1px solid #444; }
         .key:active { background: var(--primary); }
 
         /* Panneau Latéral */
         #admin-panel {
             position: absolute; top: 0; left: -320px; width: 300px; height: 100%;
             background: white; z-index: 2000; box-shadow: 5px 0 15px rgba(0,0,0,0.3);
-            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: left 0.4s ease;
         }
         #admin-panel.open { left: 0; }
-        .admin-handle {
-            position: absolute; top: 20px; right: -55px; width: 55px; height: 50px;
-            background: var(--primary); border-radius: 0 10px 10px 0;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
-        }
+        .admin-handle { position: absolute; top: 20px; right: -55px; width: 55px; height: 50px; background: var(--primary); border-radius: 0 10px 10px 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; font-size: 24px; }
 
-        /* Liste Navettes */
         .panel-content { padding: 20px; }
-        .shuttle-card {
-            background: #fff; border-radius: 12px; padding: 15px;
-            margin-bottom: 15px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .shuttle-name { font-weight: bold; display: block; margin-bottom: 4px; }
+        .shuttle-card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
+        .shuttle-name { font-weight: bold; display: block; color: var(--primary); }
         .shuttle-stats { font-size: 11px; color: #666; }
 
         /* Switch Toggle */
         .switch { position: relative; width: 46px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc; transition: .4s; border-radius: 34px;
-        }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
         input:checked + .slider { background-color: var(--success); }
-        .slider:before {
-            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
-            background-color: white; transition: .4s; border-radius: 50%;
-        }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider:before { transform: translateX(22px); }
 
         /* Icone Map */
-        .bus-circle {
-            width: 38px; height: 38px; background: white; border-radius: 50%;
-            border: 3px solid var(--primary); display: flex; align-items: center; 
-            justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-        .bus-circle img { width: 24px !important; height: 24px !important; object-fit: contain; }
+        .bus-circle { width: 38px; height: 38px; background: white; border-radius: 50%; border: 3px solid var(--primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .bus-circle img { width: 24px !important; height: 24px !important; }
+        
+        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--dark); color: white; padding: 10px 20px; border-radius: 20px; display: none; z-index: 5000; }
     </style>
 </head>
 <body>
 
     <div id="pin-overlay">
-        <h2 style="margin-bottom:5px;">SESSION ADMIN</h2>
+        <h2>ACCÈS CHEF VOITURIER</h2>
         <div id="pin-display"></div>
         <div class="keypad">
-            <div class="key" onclick="pressKey('1')">1</div><div class="key" onclick="pressKey('2')">2</div><div class="key" onclick="pressKey('3')">3</div>
-            <div class="key" onclick="pressKey('4')">4</div><div class="key" onclick="pressKey('5')">5</div><div class="key" onclick="pressKey('6')">6</div>
-            <div class="key" onclick="pressKey('7')">7</div><div class="key" onclick="pressKey('8')">8</div><div class="key" onclick="pressKey('9')">9</div>
-            <div class="key" onclick="pressKey('C')" style="color:var(--danger)">C</div><div class="key" onclick="pressKey('0')">0</div><div class="key" onclick="pressKey('OK')" style="color:var(--success)">OK</div>
+            <div class="key" onclick="press('1')">1</div><div class="key" onclick="press('2')">2</div><div class="key" onclick="press('3')">3</div>
+            <div class="key" onclick="press('4')">4</div><div class="key" onclick="press('5')">5</div><div class="key" onclick="press('6')">6</div>
+            <div class="key" onclick="press('7')">7</div><div class="key" onclick="press('8')">8</div><div class="key" onclick="press('9')">9</div>
+            <div class="key" onclick="press('C')" style="color:#e74c3c">C</div><div class="key" onclick="press('0')">0</div><div class="key" onclick="press('OK')" style="color:var(--success)">OK</div>
         </div>
     </div>
 
     <div id="admin-panel">
         <div class="admin-handle" onclick="document.getElementById('admin-panel').classList.toggle('open')">⚙️</div>
         <div class="panel-content">
-            <h2 style="color:var(--primary);">Chef Voiturier</h2>
+            <h2 style="margin-top:0;">Gestion Flotte</h2>
             <div id="shuttle-list"></div>
             <button onclick="location.reload()" style="width:100%; padding:12px; margin-top:20px; border:none; background:#eee; border-radius:8px; cursor:pointer;">🔒 Quitter la session</button>
         </div>
     </div>
 
+    <div id="toast">Mise à jour Traccar réussie ✅</div>
     <div id="map"></div>
 
     <script>
@@ -102,34 +82,30 @@
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
 
-        // Liste des IDs Traccar réels
         const shuttles = [
-            { id: 4, name: 'Navette 4', marker: null, active: false },
-            { id: 1, name: 'Navette 1', marker: null, active: false }
+            { id: 4, name: 'Navette OBS 1', marker: null, active: false },
+            { id: 1, name: 'N6000 Alex', marker: null, active: false }
         ];
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        function pressKey(num) {
+        function press(num) {
             if (num === 'C') currentPin = "";
             else if (num === 'OK') {
                 if (currentPin === PIN_SECRET) document.getElementById('pin-overlay').style.display = 'none';
-                else { alert("Code incorrect"); currentPin = ""; }
+                else { alert("Code erroné"); currentPin = ""; }
             } else if (currentPin.length < 4) currentPin += num;
             document.getElementById('pin-display').innerText = "•".repeat(currentPin.length);
         }
 
         async function initAdmin() {
             const container = document.getElementById('shuttle-list');
-            
-            // On récupère d'abord l'état actuel sur Traccar
             const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
             const devices = await res.json();
 
             shuttles.forEach(s => {
                 const device = devices.find(d => d.id === s.id);
-                // Si hideClient n'existe pas ou est false, la navette est "Active" (On)
                 s.active = device ? !device.attributes.hideClient : true;
 
                 const card = document.createElement('div');
@@ -137,13 +113,12 @@
                 card.innerHTML = `
                     <div class="shuttle-meta">
                         <span class="shuttle-name">${s.name}</span>
-                        <span id="stat-${s.id}" class="shuttle-stats">Chargement...</span>
+                        <span id="stat-${s.id}" class="shuttle-stats">Connexion...</span>
                     </div>
                     <label class="switch">
-                        <input type="checkbox" id="check-${s.id}" ${s.active ? 'checked' : ''} onchange="toggleShuttle(${s.id}, this.checked)">
+                        <input type="checkbox" ${s.active ? 'checked' : ''} onchange="toggleShuttle(${s.id}, this.checked)">
                         <span class="slider"></span>
-                    </label>
-                `;
+                    </label>`;
                 container.appendChild(card);
             });
             updateData();
@@ -151,27 +126,21 @@
 
         async function toggleShuttle(deviceId, isVisible) {
             try {
-                // 1. Récupérer le device complet
                 const res = await fetch(`${TRACCAR_URL}/api/devices?id=${deviceId}`, { headers: { 'Authorization': AUTH } });
                 const devices = await res.json();
                 const device = devices[0];
-
-                // 2. Mettre à jour l'attribut hideClient (On = visible = hideClient:false)
                 device.attributes.hideClient = !isVisible;
 
-                // 3. Envoyer la mise à jour
                 await fetch(`${TRACCAR_URL}/api/devices/${deviceId}`, {
                     method: 'PUT',
                     headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
                     body: JSON.stringify(device)
                 });
 
-                // Mettre à jour l'état local pour la carte admin
-                const s = shuttles.find(sh => sh.id === deviceId);
-                s.active = isVisible;
-                if (!isVisible && s.marker) { map.removeLayer(s.marker); s.marker = null; }
-                
-            } catch (e) { alert("Erreur de synchronisation Traccar"); }
+                const t = document.getElementById('toast'); t.style.display='block'; setTimeout(()=>t.style.display='none', 2000);
+                shuttles.find(sh => sh.id === deviceId).active = isVisible;
+                updateData();
+            } catch (e) { alert("Erreur de synchronisation"); }
         }
 
         async function updateData() {
@@ -179,28 +148,21 @@
                 try {
                     const resPos = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${s.id}`, { headers: { 'Authorization': AUTH } });
                     const positions = await resPos.json();
-                    
                     if (positions.length > 0) {
                         const p = positions[0];
-                        const batt = p.attributes.batteryLevel || "--";
-                        document.getElementById(`stat-${s.id}`).innerHTML = `🔋 ${batt}% | ${Math.round(p.speed*1.852)} km/h`;
+                        document.getElementById(`stat-${s.id}`).innerHTML = `🔋 ${p.attributes.batteryLevel || '--'}% | ${Math.round(p.speed*1.852)} km/h`;
 
-                        // Affichage sur la carte Admin (seulement si le switch est ON)
                         if (s.active) {
-                            if (!s.marker) {
-                                const html = `<div class="bus-circle"><img src="images/van.png"></div>`;
-                                s.marker = L.marker([p.latitude, p.longitude], { icon: L.divIcon({ html: html, className: '', iconSize: [40, 40], iconAnchor: [20, 20] }) }).addTo(map);
-                            } else {
-                                s.marker.setLatLng([p.latitude, p.longitude]);
-                            }
-                        }
+                            if (!s.marker) s.marker = L.marker([p.latitude, p.longitude], { icon: L.divIcon({ html: '<div class="bus-circle"><img src="images/van.png"></div>', className: '', iconSize: [40, 40], iconAnchor: [20, 20] }) }).addTo(map);
+                            else s.marker.setLatLng([p.latitude, p.longitude]);
+                        } else if (s.marker) { map.removeLayer(s.marker); s.marker = null; }
                     }
-                } catch (e) { console.log("Erreur de données"); }
+                } catch (e) { console.log("Erreur API"); }
             }
         }
 
         initAdmin();
-        setInterval(updateData, 3000);
+        setInterval(updateData, 4000);
     </script>
 </body>
 </html>
