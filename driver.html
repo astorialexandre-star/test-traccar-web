@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>CHAUFFEUR - 369 Shuttles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <style>
+        :root { 
+            --bg: #1a1a1a; --card: #2d2d2d; --text: #ffffff;
+            --primary: #3498db; --success: #2ecc71; --danger: #e74c3c; --warning: #f1c40f;
+        }
+        body { 
+            margin: 0; padding: 20px; font-family: 'Segoe UI', sans-serif; 
+            background: var(--bg); color: var(--text); box-sizing: border-box;
+            display: flex; flex-direction: column; height: 100vh;
+        }
+
+        /* En-tête Statut */
+        .header { text-align: center; margin-bottom: 20px; }
+        .speed-display { font-size: 64px; font-weight: bold; color: var(--success); margin: 10px 0; }
+        .unit { font-size: 20px; color: #888; }
+
+        /* Le Gros Switch */
+        .status-card {
+            background: var(--card); border-radius: 20px; padding: 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 25px; border: 2px solid #444;
+        }
+        .status-label { font-size: 24px; font-weight: bold; }
+        
+        .main-switch { position: relative; width: 100px; height: 50px; }
+        .main-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { 
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
+            background-color: var(--danger); transition: .4s; border-radius: 50px; 
+        }
+        .slider:before { 
+            position: absolute; content: ""; height: 42px; width: 42px; left: 4px; bottom: 4px; 
+            background-color: white; transition: .4s; border-radius: 50%; 
+        }
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(50px); }
+
+        /* Grille de boutons */
+        .button-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex-grow: 1;
+        }
+        .btn {
+            border: none; border-radius: 15px; color: white; font-size: 18px; font-weight: bold;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; cursor: pointer; transition: transform 0.1s;
+            text-align: center;
+        }
+        .btn:active { transform: scale(0.95); opacity: 0.8; }
+        .btn-warning { background: var(--warning); color: #000; }
+        .btn-danger { background: var(--danger); }
+        .btn-info { background: var(--primary); }
+        .btn-icon { font-size: 32px; margin-bottom: 10px; }
+
+        #toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: var(--success); color: white; padding: 15px 30px;
+            border-radius: 30px; font-weight: bold; display: none; z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast">Statut mis à jour ✅</div>
+
+    <div class="header">
+        <div id="shuttle-name" style="font-size: 20px; color: var(--primary);">NAVETTE...</div>
+        <div class="speed-display"><span id="speed">0</span><span class="unit"> km/h</span></div>
+    </div>
+
+    <div class="status-card">
+        <div class="status-label" id="status-text">HORS SERVICE</div>
+        <label class="main-switch">
+            <input type="checkbox" id="service-toggle" onchange="toggleService(this.checked)">
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="button-grid">
+        <button class="btn btn-warning" onclick="sendStatus('Embouteillage 🚗')">
+            <span class="btn-icon">🚗</span>TRAFIC
+        </button>
+        <button class="btn btn-danger" onclick="sendStatus('Accident ⚠️')">
+            <span class="btn-icon">⚠️</span>ACCIDENT
+        </button>
+        <button class="btn btn-info" onclick="sendStatus('Fait le plein ⛽')">
+            <span class="btn-icon">⛽</span>PLEIN
+        </button>
+        <button class="btn btn-info" onclick="sendStatus('En pause ☕')">
+            <span class="btn-icon">☕</span>PAUSE
+        </button>
+    </div>
+
+    <script>
+        const TRACCAR_URL = 'https://369shuttles.duckdns.org';
+        const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
+        
+        // On récupère l'ID de la navette dans l'URL (ex: driver.html?id=4)
+        const urlParams = new URLSearchParams(window.location.search);
+        const deviceId = urlParams.get('id') || 4; 
+
+        async function init() {
+            const res = await fetch(`${TRACCAR_URL}/api/devices?id=${deviceId}`, { headers: { 'Authorization': AUTH } });
+            const devices = await res.json();
+            const d = devices[0];
+            
+            document.getElementById('shuttle-name').innerText = d.name;
+            const isVisible = !d.attributes.hideClient;
+            document.getElementById('service-toggle').checked = isVisible;
+            updateUI(isVisible);
+            
+            setInterval(updateSpeed, 3000);
+        }
+
+        function updateUI(isInService) {
+            const txt = document.getElementById('status-text');
+            txt.innerText = isInService ? "EN SERVICE" : "HORS SERVICE";
+            txt.style.color = isInService ? "var(--success)" : "var(--danger)";
+        }
+
+        async function toggleService(isVisible) {
+            try {
+                const res = await fetch(`${TRACCAR_URL}/api/devices?id=${deviceId}`, { headers: { 'Authorization': AUTH } });
+                const devices = await res.json();
+                const device = devices[0];
+                
+                device.attributes.hideClient = !isVisible;
+                device.attributes.driverStatus = isVisible ? "En route" : "Indisponible";
+
+                await fetch(`${TRACCAR_URL}/api/devices/${deviceId}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(device)
+                });
+
+                updateUI(isVisible);
+                showToast("Service mis à jour");
+            } catch (e) { alert("Erreur de connexion"); }
+        }
+
+        async function sendStatus(label) {
+            try {
+                const res = await fetch(`${TRACCAR_URL}/api/devices?id=${deviceId}`, { headers: { 'Authorization': AUTH } });
+                const devices = await res.json();
+                const device = devices[0];
+                
+                device.attributes.driverStatus = label;
+                // Si le chauffeur clique sur pause ou plein, on le cache aussi aux clients
+                if (label.includes('pause') || label.includes('plein')) {
+                    device.attributes.hideClient = true;
+                    document.getElementById('service-toggle').checked = false;
+                    updateUI(false);
+                }
+
+                await fetch(`${TRACCAR_URL}/api/devices/${deviceId}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(device)
+                });
+
+                showToast(label);
+            } catch (e) { alert("Erreur d'envoi"); }
+        }
+
+        async function updateSpeed() {
+            const res = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${deviceId}`, { headers: { 'Authorization': AUTH } });
+            const pos = await res.json();
+            if (pos.length > 0) {
+                document.getElementById('speed').innerText = Math.round(pos[0].speed * 1.852);
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg + " ✅";
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        init();
+    </script>
+</body>
+</html>
