@@ -16,9 +16,9 @@
     
     <style>
         #map { height: 100vh; width: 100%; background: #e5e3df; }
-        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         
-        /* Header & Horloge */
+        /* En-tête Statut */
         .status-header {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: white; padding: 10px 15px; border-radius: 12px; 
@@ -27,7 +27,7 @@
         .status-top { display: flex; align-items: center; justify-content: center; gap: 10px; }
         .status-time { font-size: 18px; font-weight: bold; }
 
-        /* Bandeau d'alerte de proximité */
+        /* Alerte de proximité (100m) */
         #proximity-alert {
             position: absolute; top: 120px; left: 50%; transform: translateX(-50%);
             z-index: 1100; background: #2ecc71; color: white; padding: 10px 20px;
@@ -58,7 +58,7 @@
         .sw-btn.hidden { display: none; } 
         .sw-status { font-size: 9px; text-transform: uppercase; margin-top: 2px; opacity: 0.8; }
 
-        /* Icones & Marqueurs */
+        /* Style des marqueurs */
         .navette-container { position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
         .navette-label { 
             background: #005587; color: white; padding: 2px 6px; border-radius: 4px; 
@@ -76,6 +76,7 @@
             margin-top: -6px; margin-left: 18px; transform-origin: -18px center; z-index: 1;
         }
 
+        /* Contrôles Map */
         .map-controls { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
         .control-btn {
             background: white; border: none; border-radius: 50%; width: 55px; height: 55px;
@@ -124,7 +125,6 @@
     <div id="map"></div>
 
     <script>
-        // Enregistrement PWA
         if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
 
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
@@ -135,7 +135,6 @@
             { "name": "Mamie Megève", "coords": [45.8593, 6.6291], "icon": "images/logomamiemegeve.png" },
             { "name": "Mont d'Arbois", "coords": [45.8538, 6.6317], "icon": "images/logomontdarbois.png" },
             { "name": "L'Arboisie", "coords": [45.8586, 6.6276], "icon": "images/logolarboisie.png" },
-            { "name": "L'Arboisie", "coords": [45.8539, 6.6256], "icon": "images/logolarboisie.png" },
             { "name": "Village", "coords": [45.8575, 6.6206], "icon": "images/logovillage.png" }
         ];
 
@@ -147,8 +146,8 @@
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Circuit GeoJSON
-        const circuitData = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.629327,45.859227],[6.629352,45.859139],[6.629369,45.859059],[6.629361,45.858970],[6.629314,45.858899],[6.629255,45.858843],[6.629153,45.858796],[6.629030,45.858754],[6.628877,45.858692],[6.628690,45.858619],[6.628461,45.858521],[6.628291,45.858447],[6.628192,45.858403],[6.628052,45.858371],[6.627895,45.858341],[6.627708,45.858306],[6.627564,45.858276],[6.627428,45.858238],[6.627330,45.858181],[6.627224,45.858134],[6.627135,45.858081],[6.627004,45.858048],[6.626842,45.858051],[6.626753,45.858102],[6.626707,45.858187],[6.626766,45.858261],[6.626889,45.858353],[6.627059,45.858492],[6.627190,45.859003],[6.628073,45.859151],[6.627551,45.859234]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.627548,45.859232],[6.626603,45.858758],[6.626159,45.858863],[6.627438,45.860869],[6.623778,45.858472]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.623778,45.858472],[6.620729,45.857588],[6.620970,45.857613]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631599,45.853848],[6.631103,45.857644],[6.631296,45.859061]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631295,45.859061],[6.630560,45.861179],[6.633651,45.865602],[6.627438,45.860869]]}}]}
+        // --- TRACÉ DÉTAILLÉ (COURBES RÉELLES DES ROUTES) ---
+        const circuitData = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.629327,45.859227],[6.629352,45.859139],[6.629369,45.859059],[6.629361,45.858970],[6.629314,45.858899],[6.629255,45.858843],[6.629153,45.858796],[6.629030,45.858754],[6.628877,45.858692],[6.628690,45.858619],[6.628461,45.858521],[6.628291,45.858447],[6.628192,45.858403],[6.628052,45.858371],[6.627895,45.858341],[6.627708,45.858306],[6.627564,45.858276],[6.627428,45.858238],[6.627330,45.858181],[6.627224,45.858134],[6.627135,45.858081],[6.627004,45.858048],[6.626842,45.858051],[6.626753,45.858102],[6.626707,45.858187],[6.626766,45.858261],[6.626889,45.858353],[6.627059,45.858492],[6.627190,45.858595],[6.627313,45.858707],[6.627398,45.858778],[6.627564,45.858894],[6.627747,45.858956],[6.627937,45.859003],[6.628044,45.859062],[6.628073,45.859151],[6.627982,45.859270],[6.627848,45.859299],[6.627689,45.859269],[6.627551,45.859234]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.627548,45.859232],[6.627420,45.859201],[6.627136,45.859131],[6.626844,45.858992],[6.626603,45.858758],[6.626276,45.858611],[6.626118,45.858680],[6.626159,45.858863],[6.626514,45.859240],[6.626854,45.859639],[6.627108,45.859871],[6.627349,45.860312],[6.627438,45.860869],[6.627041,45.860568],[6.626224,45.860300],[6.626028,45.860097],[6.625535,45.859664],[6.625089,45.859361],[6.624640,45.859091],[6.624190,45.858753],[6.623778,45.858472]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.623778,45.858472],[6.623050,45.858262],[6.622379,45.858004],[6.621634,45.857747],[6.620984,45.857615],[6.620851,45.857641],[6.620729,45.857588],[6.620748,45.857562],[6.620658,45.857497],[6.620737,45.857529],[6.620898,45.857593],[6.620970,45.857613]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631599,45.853848],[6.631526,45.854377],[6.631436,45.855170],[6.631368,45.855894],[6.631256,45.856669],[6.631171,45.857162],[6.631103,45.857644],[6.631126,45.858208],[6.631247,45.858865],[6.631296,45.859061]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631295,45.859061],[6.631196,45.859342],[6.630607,45.859949],[6.630039,45.860571],[6.630101,45.860843],[6.630560,45.861179],[6.631005,45.861818],[6.631160,45.862401],[6.631349,45.862799],[6.631745,45.863157],[6.632047,45.863829],[6.632563,45.864357],[6.632827,45.864952],[6.633118,45.865281],[6.633651,45.865602],[6.633606,45.865833],[6.632256,45.865130],[6.631747,45.864633],[6.631235,45.864068],[6.630441,45.863589],[6.629704,45.863008],[6.629313,45.862561],[6.629117,45.862146],[6.628441,45.861607],[6.627921,45.861233],[6.627438,45.860869]]}}]}
         L.geoJSON(circuitData, { style: { color: '#3388ff', weight: 6, opacity: 0.3 } }).addTo(map);
 
         hotels.forEach(h => { L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [80, 80], iconAnchor: [40, 80] }) }).addTo(map); });
@@ -159,7 +158,6 @@
         });
         map.locate({watch: true, enableHighAccuracy: true});
 
-        // Formule de calcul de distance
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const φ1 = lat1 * Math.PI/180;
@@ -196,7 +194,6 @@
                         const speed = Math.round(pos.speed * 1.852);
                         stat.innerText = `${speed} km/h • ${dev.attributes.driverStatus || "En route"}`;
 
-                        // Vérification Proximité (100m)
                         hotels.forEach(h => {
                             const dist = getDistance(pos.latitude, pos.longitude, h.coords[0], h.coords[1]);
                             if (dist < 100 && speed > 2) { 
