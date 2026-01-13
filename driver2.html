@@ -74,7 +74,7 @@
     <div id="login-overlay">
         <div class="pin-container">
             <h2 style="margin:0 0 10px 0; color:var(--primary)">Prise de Service</h2>
-            <p id="loading-msg" style="font-size:11px; color:#888; margin-bottom:10px;">Vérification des véhicules...</p>
+            <p id="loading-msg" style="font-size:11px; color:#888; margin-bottom:10px;">Synchronisation Traccar...</p>
             
             <select id="shuttle-choice" class="shuttle-select">
                 <option value="">Chargement...</option>
@@ -133,22 +133,38 @@
             return allDevices;
         }
 
+        // --- 1. VERIFICATION ET AUTO-NETTOYAGE DES NAVETTES ---
         async function checkAvailableShuttles() {
             try {
                 const devices = await fetchDevices();
                 const select = document.getElementById('shuttle-choice');
                 select.innerHTML = '<option value="">-- Sélectionnez la navette --</option>';
 
-                devices.filter(d => d.id === 1 || d.id === 4).forEach(dev => {
+                const relevantShuttles = devices.filter(d => d.id === 1 || d.id === 4);
+
+                for (let dev of relevantShuttles) {
                     const driverAttr = dev.attributes.currentDriver;
                     const isOccupied = driverAttr && driverAttr.trim() !== "";
                     
+                    // SÉCURITÉ : Si pas de chauffeur mais la navette est visible, on la cache
+                    if (!isOccupied && dev.attributes.hideClient === false) {
+                        console.log(`Auto-Hide: Masquage de ${dev.name} (Aucun chauffeur détecté)`);
+                        dev.attributes.hideClient = true;
+                        dev.attributes.driverStatus = "Libre (Masquée)";
+                        await fetch(`${TRACCAR_URL}/api/devices/${dev.id}`, {
+                            method: 'PUT',
+                            headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
+                            body: JSON.stringify(dev)
+                        });
+                    }
+
                     const option = document.createElement('option');
                     option.value = dev.id;
                     option.text = isOccupied ? `🚫 ${dev.name} (Occupée par ${driverAttr})` : `✅ ${dev.name} (Libre)`;
                     if (isOccupied) option.disabled = true;
                     select.appendChild(option);
-                });
+                }
+                document.getElementById('loading-msg').innerText = "Vérification effectuée";
             } catch (e) { console.error(e); }
         }
 
@@ -165,13 +181,9 @@
 
             try {
                 const devices = await fetchDevices();
-                
-                // --- LOGIQUE DE RECONNEXION ---
-                // On regarde si ce chauffeur est déjà enregistré sur un véhicule
                 const existingAssignment = devices.find(d => d.attributes.currentDriver === driverName);
 
                 if (existingAssignment) {
-                    // Si trouvé, on le connecte direct à ce véhicule, même s'il est "disabled" dans la liste
                     currentDeviceId = existingAssignment.id;
                     currentDriverName = driverName;
                     document.getElementById('login-overlay').style.display = 'none';
@@ -180,7 +192,6 @@
                     return;
                 }
 
-                // --- CONNEXION NORMALE ---
                 const devId = select.value;
                 if (!devId) { 
                     alert("Veuillez sélectionner une navette libre."); 
@@ -200,7 +211,7 @@
                 currentDriverName = driverName;
                 targetDevice.attributes.currentDriver = driverName;
                 targetDevice.attributes.driverStatus = "En service";
-                targetDevice.attributes.hideClient = false;
+                targetDevice.attributes.hideClient = false; // ON REND VISIBLE
 
                 await saveToTraccar(targetDevice);
                 document.getElementById('login-overlay').style.display = 'none';
@@ -210,6 +221,7 @@
             } catch (e) {
                 alert("Erreur réseau");
                 btn.disabled = false;
+                btn.innerText = "DEMARRER LE SERVICE";
             }
         }
 
@@ -223,16 +235,16 @@
                 
                 if (myDevice) {
                     myDevice.attributes.currentDriver = "";
-                    myDevice.attributes.hideClient = true;
+                    myDevice.attributes.hideClient = true; // ON CACHE
                     await fetch(`${TRACCAR_URL}/api/devices/${myDevice.id}`, {
                         method: 'PUT',
                         headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
                         body: JSON.stringify(myDevice)
                     });
-                    alert("Véhicule libéré. Vous pouvez maintenant vous reconnecter.");
+                    alert("Véhicule libéré et masqué.");
                     checkAvailableShuttles();
                 } else {
-                    alert("Aucun véhicule n'est actuellement associé à votre nom.");
+                    alert("Aucun véhicule n'est associé à votre nom.");
                 }
             }
         }
@@ -252,6 +264,7 @@
             device.attributes.driverStatus = isVisible ? "En route" : "Indisponible";
             await saveToTraccar(device);
             updateUI(isVisible);
+            showToast(isVisible ? "Visible par les clients" : "Masquée pour les clients");
         }
 
         async function sendStatus(label) {
@@ -271,8 +284,8 @@
             if (confirm("Terminer votre service ?")) {
                 const devices = await fetchDevices();
                 const device = devices.find(d => d.id == currentDeviceId);
-                device.attributes.currentDriver = "";
-                device.attributes.hideClient = true;
+                device.attributes.currentDriver = ""; // LIBÈRE
+                device.attributes.hideClient = true;  // CACHE
                 device.attributes.driverStatus = "Hors service";
                 await saveToTraccar(device);
                 location.reload(); 
