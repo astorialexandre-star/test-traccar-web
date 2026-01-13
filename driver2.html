@@ -15,31 +15,33 @@
             display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
 
-        /* --- OVERLAY LOGIN --- */
+        /* --- LOGIN --- */
         #login-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg); z-index: 2000; display: flex;
             flex-direction: column; align-items: center; justify-content: center;
         }
-        .pin-container { background: var(--card); padding: 30px; border-radius: 20px; text-align: center; width: 85%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .pin-container { background: var(--card); padding: 30px; border-radius: 20px; text-align: center; width: 85%; max-width: 350px; }
         
         select.shuttle-select {
-            width: 100%; padding: 15px; background: #444; color: white; border: 2px solid #555; border-radius: 10px; font-size: 16px; margin-bottom: 20px; outline: none;
+            width: 100%; padding: 15px; background: #444; color: white; border: 2px solid #555; border-radius: 10px; font-size: 16px; margin-bottom: 15px;
         }
-        select.shuttle-select option:disabled { color: #ff6b6b; background: #222; }
 
         input.pin-input { 
             width: 100%; font-size: 32px; text-align: center; background: #1a1a1a; 
-            border: 2px solid var(--primary); color: white; border-radius: 10px; margin-bottom: 20px; padding: 10px 0; outline: none;
+            border: 2px solid var(--primary); color: white; border-radius: 10px; margin-bottom: 15px; padding: 10px 0;
         }
         
         .login-btn { 
             background: var(--primary); color: white; border: none; padding: 18px; 
-            border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; font-size: 18px; margin-bottom: 10px;
+            border-radius: 10px; font-weight: bold; width: 100%; font-size: 18px; cursor: pointer;
         }
-        .reset-link { color: #888; font-size: 12px; text-decoration: underline; cursor: pointer; border: none; background: none; }
 
-        /* --- INTERFACE PRINCIPALE --- */
+        .reset-link {
+            display: block; margin-top: 15px; color: var(--danger); font-size: 13px; text-decoration: underline; cursor: pointer; background: none; border: none; width: 100%;
+        }
+
+        /* --- INTERFACE --- */
         .header { text-align: center; margin-bottom: 10px; }
         .speed-display { font-size: 54px; font-weight: bold; color: var(--success); }
         .driver-info { color: #888; font-size: 14px; margin-bottom: 10px; }
@@ -49,7 +51,6 @@
             display: flex; align-items: center; justify-content: space-between;
             margin-bottom: 15px; border: 2px solid #444;
         }
-        .status-label { font-size: 20px; font-weight: bold; }
         
         .main-switch { position: relative; width: 80px; height: 40px; }
         .main-switch input { opacity: 0; width: 0; height: 0; }
@@ -60,31 +61,26 @@
 
         .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex-grow: 1; margin-bottom: 20px; }
         .btn { border: none; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; cursor: pointer; }
-        .btn-warning { background: var(--warning); color: #000; }
-        .btn-danger { background: var(--danger); }
-        .btn-info { background: var(--primary); }
         
-        .btn-logout { background: #444; border: none; color: #bbb; padding: 12px; border-radius: 10px; font-size: 14px; cursor: pointer; width: 100%; }
+        .btn-logout { background: #444; border: none; color: #bbb; padding: 12px; border-radius: 10px; width: 100%; cursor: pointer; }
 
-        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--success); color: white; padding: 15px 30px; border-radius: 30px; font-weight: bold; display: none; z-index: 3000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--success); color: white; padding: 15px 30px; border-radius: 30px; display: none; z-index: 3000; }
     </style>
 </head>
 <body>
 
     <div id="login-overlay">
         <div class="pin-container">
-            <h2 style="margin:0 0 10px 0; color:var(--primary)">Prise de Service</h2>
-            <p id="loading-msg" style="font-size:11px; color:#888; margin-bottom:10px;">Synchronisation Traccar...</p>
-            
-            <select id="shuttle-choice" class="shuttle-select">
+            <h2 style="color:var(--primary); margin-top:0;">Prise de Service</h2>
+            <select id="shuttle-choice" class="shuttle-select" onchange="toggleResetButton()">
                 <option value="">Chargement...</option>
             </select>
+            <input type="password" id="driver-pin" class="pin-input" placeholder="CODE PIN" inputmode="numeric">
+            <button class="login-btn" onclick="handleLogin()">DÉMARRER</button>
             
-            <input type="password" id="driver-pin" class="pin-input" placeholder="CODE PIN" inputmode="numeric" pattern="[0-9]*">
-            
-            <button class="login-btn" id="login-btn" onclick="handleLogin()">DEMARRER LE SERVICE</button>
-            <br>
-            <button class="reset-link" onclick="forceRelease()">Libérer ma navette (Si bloqué)</button>
+            <button id="btn-reset-shuttle" class="reset-link" style="display:none;" onclick="forceReleaseShuttle()">
+                ⚠️ Navette occupée ? Libérer
+            </button>
         </div>
     </div>
 
@@ -92,12 +88,12 @@
 
     <div class="header">
         <div id="shuttle-name" style="font-size: 22px; font-weight: bold; color: var(--primary);">--</div>
-        <div id="driver-display" class="driver-info">Chauffeur : --</div>
+        <div id="driver-display" class="driver-info">--</div>
         <div class="speed-display"><span id="speed">0</span><span style="font-size:18px"> km/h</span></div>
     </div>
 
     <div class="status-card">
-        <div class="status-label" id="status-text">HORS SERVICE</div>
+        <div class="status-label" id="status-text" style="font-size:20px; font-weight:bold;">HORS SERVICE</div>
         <label class="main-switch">
             <input type="checkbox" id="service-toggle" onchange="toggleService(this.checked)">
             <span class="slider"></span>
@@ -105,195 +101,155 @@
     </div>
 
     <div class="button-grid">
-        <button class="btn btn-warning" onclick="sendStatus('Embouteillage 🚗')">🚗 TRAFIC</button>
-        <button class="btn btn-danger" onclick="sendStatus('Accident ⚠️')">⚠️ ACCIDENT</button>
-        <button class="btn btn-info" onclick="sendStatus('Fait le plein ⛽')">⛽ PLEIN</button>
-        <button class="btn btn-info" onclick="sendStatus('En pause ☕')">☕ PAUSE</button>
+        <button class="btn" style="background:var(--warning); color:black" onclick="sendStatus('Trafic 🚗')">🚗 TRAFIC</button>
+        <button class="btn" style="background:var(--danger)" onclick="sendStatus('Accident ⚠️')">⚠️ ACCIDENT</button>
+        <button class="btn" style="background:var(--primary)" onclick="sendStatus('Plein ⛽')">⛽ PLEIN</button>
+        <button class="btn" style="background:var(--primary)" onclick="sendStatus('Pause ☕')">☕ PAUSE</button>
     </div>
 
-    <button class="btn-logout" onclick="logout()">FIN DE SERVICE / DÉCONNEXION</button>
+    <button class="btn-logout" onclick="logout()">DÉCONNEXION</button>
 
     <script>
         const TRACCAR_URL = 'https://369shuttles.duckdns.org';
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
-        
-        const DRIVERS = {
-            "1234": "Jean Marc",
-            "5678": "Sophie D.",
-            "9999": "Admin"
-        };
+        const DRIVERS = { "1234": "Jean Marc", "5678": "Sophie D.", "3690": "Admin" };
 
         let currentDeviceId = null;
         let currentDriverName = "";
         let allDevices = [];
+        let isUpdating = false;
 
+        // 1. Charger les navettes au démarrage
         async function fetchDevices() {
             const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
             allDevices = await res.json();
             return allDevices;
         }
 
-        // --- 1. VERIFICATION ET AUTO-NETTOYAGE DES NAVETTES ---
         async function checkAvailableShuttles() {
             try {
                 const devices = await fetchDevices();
                 const select = document.getElementById('shuttle-choice');
-                select.innerHTML = '<option value="">-- Sélectionnez la navette --</option>';
+                select.innerHTML = '<option value="">-- Choisir Navette --</option>';
+                
+                devices.filter(d => d.id === 1 || d.id === 4).forEach(dev => {
+                    const driver = dev.attributes.currentDriver;
+                    const opt = document.createElement('option');
+                    opt.value = dev.id;
+                    opt.text = driver ? `🚫 ${dev.name} (${driver})` : `✅ ${dev.name}`;
+                    select.appendChild(opt);
+                });
+                toggleResetButton();
+            } catch(e) { console.error("Erreur chargement navettes"); }
+        }
 
-                const relevantShuttles = devices.filter(d => d.id === 1 || d.id === 4);
+        function toggleResetButton() {
+            const select = document.getElementById('shuttle-choice');
+            const devId = select.value;
+            const btn = document.getElementById('btn-reset-shuttle');
+            const dev = allDevices.find(d => d.id == devId);
+            btn.style.display = (dev && dev.attributes.currentDriver) ? 'block' : 'none';
+        }
 
-                for (let dev of relevantShuttles) {
-                    const driverAttr = dev.attributes.currentDriver;
-                    const isOccupied = driverAttr && driverAttr.trim() !== "";
-                    
-                    // SÉCURITÉ : Si pas de chauffeur mais la navette est visible, on la cache
-                    if (!isOccupied && dev.attributes.hideClient === false) {
-                        console.log(`Auto-Hide: Masquage de ${dev.name} (Aucun chauffeur détecté)`);
-                        dev.attributes.hideClient = true;
-                        dev.attributes.driverStatus = "Libre (Masquée)";
-                        await fetch(`${TRACCAR_URL}/api/devices/${dev.id}`, {
-                            method: 'PUT',
-                            headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
-                            body: JSON.stringify(dev)
-                        });
-                    }
+        async function forceReleaseShuttle() {
+            const devId = document.getElementById('shuttle-choice').value;
+            const pin = document.getElementById('driver-pin').value;
+            if (pin !== "3690") { alert("Code PIN Admin requis."); return; }
 
-                    const option = document.createElement('option');
-                    option.value = dev.id;
-                    option.text = isOccupied ? `🚫 ${dev.name} (Occupée par ${driverAttr})` : `✅ ${dev.name} (Libre)`;
-                    if (isOccupied) option.disabled = true;
-                    select.appendChild(option);
-                }
-                document.getElementById('loading-msg').innerText = "Vérification effectuée";
-            } catch (e) { console.error(e); }
+            if (confirm("Forcer la libération de cette navette ?")) {
+                const dev = allDevices.find(d => d.id == devId);
+                dev.attributes.currentDriver = "";
+                dev.attributes.hideClient = true;
+                dev.attributes.driverStatus = "Libéré par Admin";
+                await saveToTraccar(devId, dev);
+                checkAvailableShuttles();
+            }
         }
 
         async function handleLogin() {
             const pin = document.getElementById('driver-pin').value;
-            const select = document.getElementById('shuttle-choice');
-            const btn = document.getElementById('login-btn');
+            const devId = document.getElementById('shuttle-choice').value;
+            if (!DRIVERS[pin] || !devId) { alert("PIN ou Navette invalide"); return; }
 
-            if (!DRIVERS[pin]) { alert("PIN Incorrect"); return; }
-            const driverName = DRIVERS[pin];
-
-            btn.disabled = true;
-            btn.innerText = "VERIFICATION...";
-
-            try {
-                const devices = await fetchDevices();
-                const existingAssignment = devices.find(d => d.attributes.currentDriver === driverName);
-
-                if (existingAssignment) {
-                    currentDeviceId = existingAssignment.id;
-                    currentDriverName = driverName;
-                    document.getElementById('login-overlay').style.display = 'none';
-                    initInterface(existingAssignment);
-                    showToast("Reconnexion : " + driverName);
-                    return;
-                }
-
-                const devId = select.value;
-                if (!devId) { 
-                    alert("Veuillez sélectionner une navette libre."); 
-                    btn.disabled = false; btn.innerText = "DEMARRER LE SERVICE";
-                    return; 
-                }
-
-                const targetDevice = devices.find(d => d.id == devId);
-                if (targetDevice.attributes.currentDriver && targetDevice.attributes.currentDriver.trim() !== "") {
-                    alert("Cette navette vient d'être prise.");
-                    checkAvailableShuttles();
-                    btn.disabled = false; btn.innerText = "DEMARRER LE SERVICE";
-                    return;
-                }
-
-                currentDeviceId = devId;
-                currentDriverName = driverName;
-                targetDevice.attributes.currentDriver = driverName;
-                targetDevice.attributes.driverStatus = "En service";
-                targetDevice.attributes.hideClient = false; // ON REND VISIBLE
-
-                await saveToTraccar(targetDevice);
-                document.getElementById('login-overlay').style.display = 'none';
-                initInterface(targetDevice);
-                showToast("Bonjour " + driverName);
-
-            } catch (e) {
-                alert("Erreur réseau");
-                btn.disabled = false;
-                btn.innerText = "DEMARRER LE SERVICE";
+            const devices = await fetchDevices();
+            const dev = devices.find(d => d.id == devId);
+            if (dev.attributes.currentDriver && pin !== "3690") {
+                alert("Navette occupée par " + dev.attributes.currentDriver);
+                return;
             }
-        }
 
-        async function forceRelease() {
-            const pin = document.getElementById('driver-pin').value;
-            if (!DRIVERS[pin]) { alert("Entrez votre code PIN d'abord"); return; }
-            
-            if (confirm("Voulez-vous libérer le véhicule associé à votre nom ?")) {
-                const devices = await fetchDevices();
-                const myDevice = devices.find(d => d.attributes.currentDriver === DRIVERS[pin]);
-                
-                if (myDevice) {
-                    myDevice.attributes.currentDriver = "";
-                    myDevice.attributes.hideClient = true; // ON CACHE
-                    await fetch(`${TRACCAR_URL}/api/devices/${myDevice.id}`, {
-                        method: 'PUT',
-                        headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
-                        body: JSON.stringify(myDevice)
-                    });
-                    alert("Véhicule libéré et masqué.");
-                    checkAvailableShuttles();
-                } else {
-                    alert("Aucun véhicule n'est associé à votre nom.");
-                }
-            }
+            currentDeviceId = devId;
+            currentDriverName = DRIVERS[pin];
+            dev.attributes.currentDriver = currentDriverName;
+            dev.attributes.hideClient = false;
+            dev.attributes.driverStatus = "En service";
+
+            await saveToTraccar(devId, dev);
+            document.getElementById('login-overlay').style.display = 'none';
+            initInterface(dev);
         }
 
         function initInterface(device) {
             document.getElementById('shuttle-name').innerText = device.name;
             document.getElementById('driver-display').innerText = "Chauffeur : " + currentDriverName;
-            document.getElementById('service-toggle').checked = !device.attributes.hideClient;
-            updateUI(!device.attributes.hideClient);
+            
+            // Boucles de mise à jour
             setInterval(updateSpeed, 3000);
+            setInterval(syncWithServer, 5000); // Surveillance Admin
+            syncWithServer(); 
+        }
+
+        // --- SYNCHRONISATION ENTRANTE (ÉCOUTE L'ADMIN) ---
+        async function syncWithServer() {
+            if (isUpdating) return; 
+            try {
+                const res = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { 
+                    headers: { 'Authorization': AUTH },
+                    cache: "no-store" 
+                });
+                const devs = await res.json();
+                const dev = devs[0];
+                if (!dev) return;
+
+                const shouldBeVisible = !dev.attributes.hideClient;
+                const toggle = document.getElementById('service-toggle');
+                
+                if (toggle.checked !== shouldBeVisible) {
+                    toggle.checked = shouldBeVisible;
+                    updateUI(shouldBeVisible);
+                }
+            } catch (e) {}
         }
 
         async function toggleService(isVisible) {
-            const devices = await fetchDevices();
-            const device = devices.find(d => d.id == currentDeviceId);
-            device.attributes.hideClient = !isVisible;
-            device.attributes.driverStatus = isVisible ? "En route" : "Indisponible";
-            await saveToTraccar(device);
-            updateUI(isVisible);
-            showToast(isVisible ? "Visible par les clients" : "Masquée pour les clients");
+            isUpdating = true;
+            try {
+                const devices = await fetchDevices();
+                const dev = devices.find(d => d.id == currentDeviceId);
+                dev.attributes.hideClient = !isVisible;
+                dev.attributes.driverStatus = isVisible ? "En service" : "Hors service";
+                await saveToTraccar(currentDeviceId, dev);
+                updateUI(isVisible);
+            } catch (e) { alert("Erreur de connexion"); }
+            setTimeout(() => { isUpdating = false; }, 2000);
         }
 
         async function sendStatus(label) {
             const devices = await fetchDevices();
-            const device = devices.find(d => d.id == currentDeviceId);
-            device.attributes.driverStatus = label;
-            if (label.includes('pause') || label.includes('plein')) {
-                device.attributes.hideClient = true;
-                document.getElementById('service-toggle').checked = false;
-                updateUI(false);
-            }
-            await saveToTraccar(device);
+            const dev = devices.find(d => d.id == currentDeviceId);
+            dev.attributes.driverStatus = label;
+            await saveToTraccar(currentDeviceId, dev);
             showToast(label);
         }
 
-        async function logout() {
-            if (confirm("Terminer votre service ?")) {
-                const devices = await fetchDevices();
-                const device = devices.find(d => d.id == currentDeviceId);
-                device.attributes.currentDriver = ""; // LIBÈRE
-                device.attributes.hideClient = true;  // CACHE
-                device.attributes.driverStatus = "Hors service";
-                await saveToTraccar(device);
-                location.reload(); 
-            }
+        function updateUI(isInService) {
+            const txt = document.getElementById('status-text');
+            txt.innerText = isInService ? "EN SERVICE" : "HORS SERVICE";
+            txt.style.color = isInService ? "var(--success)" : "var(--danger)";
         }
 
-        async function saveToTraccar(deviceData) {
-            await fetch(`${TRACCAR_URL}/api/devices/${currentDeviceId}`, {
+        async function saveToTraccar(id, deviceData) {
+            await fetch(`${TRACCAR_URL}/api/devices/${id}`, {
                 method: 'PUT',
                 headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
                 body: JSON.stringify(deviceData)
@@ -308,17 +264,22 @@
             } catch(e) {}
         }
 
-        function updateUI(isInService) {
-            const txt = document.getElementById('status-text');
-            txt.innerText = isInService ? "EN SERVICE" : "HORS SERVICE";
-            txt.style.color = isInService ? "var(--success)" : "var(--danger)";
-        }
-
         function showToast(msg) {
             const t = document.getElementById('toast');
             t.innerText = msg + " ✅";
             t.style.display = 'block';
             setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        async function logout() {
+            if (confirm("Fin de service ?")) {
+                const devices = await fetchDevices();
+                const dev = devices.find(d => d.id == currentDeviceId);
+                dev.attributes.currentDriver = "";
+                dev.attributes.hideClient = true;
+                await saveToTraccar(currentDeviceId, dev);
+                location.reload();
+            }
         }
 
         window.onload = checkAvailableShuttles;
