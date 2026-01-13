@@ -119,7 +119,6 @@
         let allDevices = [];
         let isUpdating = false;
 
-        // 1. Charger les navettes au démarrage
         async function fetchDevices() {
             const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
             allDevices = await res.json();
@@ -169,17 +168,28 @@
         async function handleLogin() {
             const pin = document.getElementById('driver-pin').value;
             const devId = document.getElementById('shuttle-choice').value;
+            
             if (!DRIVERS[pin] || !devId) { alert("PIN ou Navette invalide"); return; }
 
             const devices = await fetchDevices();
             const dev = devices.find(d => d.id == devId);
-            if (dev.attributes.currentDriver && pin !== "3690") {
-                alert("Navette occupée par " + dev.attributes.currentDriver);
+            const driverNameFromPin = DRIVERS[pin];
+            const currentDriverOnServer = dev.attributes.currentDriver;
+
+            // --- LOGIQUE DE CONNEXION AMÉLIORÉE ---
+            // On autorise si :
+            // 1. La navette est vide
+            // 2. OU c'est Sophie D. qui revient sur sa propre navette (Sophie D. == Sophie D.)
+            // 3. OU c'est l'Admin (3690)
+            if (currentDriverOnServer && currentDriverOnServer !== driverNameFromPin && pin !== "3690") {
+                alert("Cette navette est déjà occupée par " + currentDriverOnServer);
                 return;
             }
 
             currentDeviceId = devId;
-            currentDriverName = DRIVERS[pin];
+            currentDriverName = driverNameFromPin;
+            
+            // Mise à jour Traccar
             dev.attributes.currentDriver = currentDriverName;
             dev.attributes.hideClient = false;
             dev.attributes.driverStatus = "En service";
@@ -192,14 +202,11 @@
         function initInterface(device) {
             document.getElementById('shuttle-name').innerText = device.name;
             document.getElementById('driver-display').innerText = "Chauffeur : " + currentDriverName;
-            
-            // Boucles de mise à jour
             setInterval(updateSpeed, 3000);
-            setInterval(syncWithServer, 5000); // Surveillance Admin
+            setInterval(syncWithServer, 5000);
             syncWithServer(); 
         }
 
-        // --- SYNCHRONISATION ENTRANTE (ÉCOUTE L'ADMIN) ---
         async function syncWithServer() {
             if (isUpdating) return; 
             try {
