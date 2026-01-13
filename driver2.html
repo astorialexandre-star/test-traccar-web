@@ -35,8 +35,9 @@
         
         .login-btn { 
             background: var(--primary); color: white; border: none; padding: 18px; 
-            border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; font-size: 18px;
+            border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; font-size: 18px; margin-bottom: 10px;
         }
+        .reset-link { color: #888; font-size: 12px; text-decoration: underline; cursor: pointer; border: none; background: none; }
 
         /* --- INTERFACE PRINCIPALE --- */
         .header { text-align: center; margin-bottom: 10px; }
@@ -73,12 +74,17 @@
     <div id="login-overlay">
         <div class="pin-container">
             <h2 style="margin:0 0 10px 0; color:var(--primary)">Prise de Service</h2>
-            <p id="loading-msg" style="font-size:11px; color:var(--warning); margin-bottom:10px;">Vérification de la disponibilité...</p>
+            <p id="loading-msg" style="font-size:11px; color:#888; margin-bottom:10px;">Vérification des véhicules...</p>
+            
             <select id="shuttle-choice" class="shuttle-select">
                 <option value="">Chargement...</option>
             </select>
+            
             <input type="password" id="driver-pin" class="pin-input" placeholder="CODE PIN" inputmode="numeric" pattern="[0-9]*">
-            <button class="login-btn" id="login-btn" onclick="login()">DEMARRER LE SERVICE</button>
+            
+            <button class="login-btn" id="login-btn" onclick="handleLogin()">DEMARRER LE SERVICE</button>
+            <br>
+            <button class="reset-link" onclick="forceRelease()">Libérer ma navette (Si bloqué)</button>
         </div>
     </div>
 
@@ -119,130 +125,138 @@
 
         let currentDeviceId = null;
         let currentDriverName = "";
+        let allDevices = [];
 
-        // 1. CHARGEMENT INITIAL ET MISE À JOUR RÉGULIÈRE DES DISPOS
+        async function fetchDevices() {
+            const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
+            allDevices = await res.json();
+            return allDevices;
+        }
+
         async function checkAvailableShuttles() {
             try {
-                const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
-                const devices = await res.json();
+                const devices = await fetchDevices();
                 const select = document.getElementById('shuttle-choice');
-                const loadingMsg = document.getElementById('loading-msg');
-                
-                // On garde la valeur sélectionnée si l'utilisateur est en train de choisir
-                const currentSelection = select.value;
                 select.innerHTML = '<option value="">-- Sélectionnez la navette --</option>';
 
-                const relevantShuttles = devices.filter(d => d.id === 1 || d.id === 4);
-                
-                relevantShuttles.forEach(dev => {
+                devices.filter(d => d.id === 1 || d.id === 4).forEach(dev => {
                     const driverAttr = dev.attributes.currentDriver;
                     const isOccupied = driverAttr && driverAttr.trim() !== "";
                     
                     const option = document.createElement('option');
                     option.value = dev.id;
-                    
-                    if (isOccupied) {
-                        option.text = `🚫 ${dev.name} (Occupée par ${driverAttr})`;
-                        option.disabled = true;
-                    } else {
-                        option.text = `✅ ${dev.name} (Libre)`;
-                    }
+                    option.text = isOccupied ? `🚫 ${dev.name} (Occupée par ${driverAttr})` : `✅ ${dev.name} (Libre)`;
+                    if (isOccupied) option.disabled = true;
                     select.appendChild(option);
                 });
-
-                // Restaurer la sélection si elle est toujours valide (libre)
-                if (currentSelection) select.value = currentSelection;
-                loadingMsg.innerText = "Liste des véhicules à jour";
-                loadingMsg.style.color = "var(--success)";
-
-            } catch (e) { 
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
 
-        // 2. TENTATIVE DE CONNEXION AVEC VÉRIFICATION SERVEUR EN TEMPS RÉEL
-        async function login() {
+        async function handleLogin() {
             const pin = document.getElementById('driver-pin').value;
-            const devId = document.getElementById('shuttle-choice').value;
+            const select = document.getElementById('shuttle-choice');
             const btn = document.getElementById('login-btn');
 
-            if (!devId) { alert("Veuillez choisir une navette"); return; }
             if (!DRIVERS[pin]) { alert("PIN Incorrect"); return; }
+            const driverName = DRIVERS[pin];
 
             btn.disabled = true;
-            btn.innerText = "VÉRIFICATION...";
+            btn.innerText = "VERIFICATION...";
 
             try {
-                // ÉTAPE CRUCIALE : On demande l'état actuel au serveur juste avant de valider
-                const res = await fetch(`${TRACCAR_URL}/api/devices?id=${devId}`, { headers: { 'Authorization': AUTH } });
-                const devices = await res.json();
-                const device = devices[0];
-                const driverAttr = device.attributes.currentDriver;
+                const devices = await fetchDevices();
+                
+                // --- LOGIQUE DE RECONNEXION ---
+                // On regarde si ce chauffeur est déjà enregistré sur un véhicule
+                const existingAssignment = devices.find(d => d.attributes.currentDriver === driverName);
 
-                // Si la navette est déjà prise par quelqu'un d'autre entre temps
-                if (driverAttr && driverAttr.trim() !== "") {
-                    alert(`Désolé, cette navette vient d'être prise par ${driverAttr}`);
-                    btn.disabled = false;
-                    btn.innerText = "DEMARRER LE SERVICE";
-                    checkAvailableShuttles(); // Rafraîchir la liste
+                if (existingAssignment) {
+                    // Si trouvé, on le connecte direct à ce véhicule, même s'il est "disabled" dans la liste
+                    currentDeviceId = existingAssignment.id;
+                    currentDriverName = driverName;
+                    document.getElementById('login-overlay').style.display = 'none';
+                    initInterface(existingAssignment);
+                    showToast("Reconnexion : " + driverName);
                     return;
                 }
 
-                // Si libre, on procède à l'attribution
-                currentDriverName = DRIVERS[pin];
-                currentDeviceId = devId;
-                
-                // Attribution du chauffeur dans les attributs Traccar
-                device.attributes.currentDriver = currentDriverName;
-                device.attributes.driverStatus = "En service";
-                device.attributes.hideClient = false; // On la rend visible au démarrage
-
-                const updateRes = await fetch(`${TRACCAR_URL}/api/devices/${currentDeviceId}`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(device)
-                });
-
-                if (updateRes.ok) {
-                    document.getElementById('login-overlay').style.display = 'none';
-                    initInterface(device);
-                    showToast("Bonjour " + currentDriverName);
-                } else {
-                    throw new Error("Erreur serveur");
+                // --- CONNEXION NORMALE ---
+                const devId = select.value;
+                if (!devId) { 
+                    alert("Veuillez sélectionner une navette libre."); 
+                    btn.disabled = false; btn.innerText = "DEMARRER LE SERVICE";
+                    return; 
                 }
 
+                const targetDevice = devices.find(d => d.id == devId);
+                if (targetDevice.attributes.currentDriver && targetDevice.attributes.currentDriver.trim() !== "") {
+                    alert("Cette navette vient d'être prise.");
+                    checkAvailableShuttles();
+                    btn.disabled = false; btn.innerText = "DEMARRER LE SERVICE";
+                    return;
+                }
+
+                currentDeviceId = devId;
+                currentDriverName = driverName;
+                targetDevice.attributes.currentDriver = driverName;
+                targetDevice.attributes.driverStatus = "En service";
+                targetDevice.attributes.hideClient = false;
+
+                await saveToTraccar(targetDevice);
+                document.getElementById('login-overlay').style.display = 'none';
+                initInterface(targetDevice);
+                showToast("Bonjour " + driverName);
+
             } catch (e) {
-                alert("Erreur de connexion au serveur. Réessayez.");
+                alert("Erreur réseau");
                 btn.disabled = false;
-                btn.innerText = "DEMARRER LE SERVICE";
+            }
+        }
+
+        async function forceRelease() {
+            const pin = document.getElementById('driver-pin').value;
+            if (!DRIVERS[pin]) { alert("Entrez votre code PIN d'abord"); return; }
+            
+            if (confirm("Voulez-vous libérer le véhicule associé à votre nom ?")) {
+                const devices = await fetchDevices();
+                const myDevice = devices.find(d => d.attributes.currentDriver === DRIVERS[pin]);
+                
+                if (myDevice) {
+                    myDevice.attributes.currentDriver = "";
+                    myDevice.attributes.hideClient = true;
+                    await fetch(`${TRACCAR_URL}/api/devices/${myDevice.id}`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(myDevice)
+                    });
+                    alert("Véhicule libéré. Vous pouvez maintenant vous reconnecter.");
+                    checkAvailableShuttles();
+                } else {
+                    alert("Aucun véhicule n'est actuellement associé à votre nom.");
+                }
             }
         }
 
         function initInterface(device) {
             document.getElementById('shuttle-name').innerText = device.name;
             document.getElementById('driver-display').innerText = "Chauffeur : " + currentDriverName;
-            document.getElementById('service-toggle').checked = true;
-            updateUI(true);
+            document.getElementById('service-toggle').checked = !device.attributes.hideClient;
+            updateUI(!device.attributes.hideClient);
             setInterval(updateSpeed, 3000);
         }
 
-        // 3. GESTION DU SERVICE
         async function toggleService(isVisible) {
-            const res = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
-            const device = (await res.json())[0];
-            
+            const devices = await fetchDevices();
+            const device = devices.find(d => d.id == currentDeviceId);
             device.attributes.hideClient = !isVisible;
             device.attributes.driverStatus = isVisible ? "En route" : "Indisponible";
-            
             await saveToTraccar(device);
             updateUI(isVisible);
-            showToast(isVisible ? "Service activé" : "Service masqué");
         }
 
         async function sendStatus(label) {
-            const res = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
-            const device = (await res.json())[0];
-            
+            const devices = await fetchDevices();
+            const device = devices.find(d => d.id == currentDeviceId);
             device.attributes.driverStatus = label;
             if (label.includes('pause') || label.includes('plein')) {
                 device.attributes.hideClient = true;
@@ -255,21 +269,16 @@
 
         async function logout() {
             if (confirm("Terminer votre service ?")) {
-                try {
-                    const res = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
-                    const device = (await res.json())[0];
-
-                    device.attributes.currentDriver = ""; // Libération
-                    device.attributes.hideClient = true;  
-                    device.attributes.driverStatus = "Hors service";
-
-                    await saveToTraccar(device);
-                    location.reload(); 
-                } catch (e) { alert("Erreur de déconnexion"); }
+                const devices = await fetchDevices();
+                const device = devices.find(d => d.id == currentDeviceId);
+                device.attributes.currentDriver = "";
+                device.attributes.hideClient = true;
+                device.attributes.driverStatus = "Hors service";
+                await saveToTraccar(device);
+                location.reload(); 
             }
         }
 
-        // HELPERS
         async function saveToTraccar(deviceData) {
             await fetch(`${TRACCAR_URL}/api/devices/${currentDeviceId}`, {
                 method: 'PUT',
@@ -282,9 +291,7 @@
             try {
                 const res = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
                 const pos = await res.json();
-                if (pos.length > 0) {
-                    document.getElementById('speed').innerText = Math.round(pos[0].speed * 1.852);
-                }
+                if (pos.length > 0) document.getElementById('speed').innerText = Math.round(pos[0].speed * 1.852);
             } catch(e) {}
         }
 
@@ -301,11 +308,7 @@
             setTimeout(() => t.style.display = 'none', 3000);
         }
 
-        // Démarrage : liste initiale + rafraîchissement toutes les 10 secondes
-        window.onload = () => {
-            checkAvailableShuttles();
-            setInterval(checkAvailableShuttles, 10000);
-        };
+        window.onload = checkAvailableShuttles;
     </script>
 </body>
 </html>
