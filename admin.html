@@ -10,6 +10,7 @@
         :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --warning: #f1c40f; --dark: #1a1a1a; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
         
+        /* --- HEADER & CARDS --- */
         #admin-header { padding: 12px; background: white; box-shadow: 0 2px 15px rgba(0,0,0,0.1); z-index: 1000; overflow-y: auto; max-height: 38vh; }
         .shuttle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
         .shuttle-card { background: #fff; border-radius: 12px; padding: 12px; border: 2px solid #eee; position: relative; transition: 0.3s; }
@@ -42,12 +43,14 @@
         input:checked + .slider:before { transform: translateX(20px); }
         .btn-round { position: absolute; bottom: 25px; right: 20px; z-index: 1000; width: 55px; height: 55px; border-radius: 50%; background: white; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-size: 22px; cursor: pointer; }
 
-        /* Styles Manager identiques au précédent... */
+        /* --- MANAGER OVERLAY --- */
         .manager-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9998; display: none; align-items: center; justify-content: center; }
-        .manager-container { background: white; width: 95%; max-width: 500px; padding: 20px; border-radius: 20px; position: relative; }
+        .manager-container { background: white; width: 95%; max-width: 500px; padding: 20px; border-radius: 20px; position: relative; color: #333; }
         .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 10px; border: none; background: none; cursor: pointer; font-weight: bold; color: #666; }
         .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+        .form-group { display: grid; gap: 8px; background: #f9f9f9; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -71,9 +74,91 @@
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
         let fleetMarkers = {};
+        let currentTab = 'v';
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        // --- TRACÉ DU CIRCUIT ---
+        const circuitData = {
+            "type":"FeatureCollection",
+            "features":[{
+                "type":"Feature",
+                "geometry":{
+                    "type":"MultiLineString",
+                    "coordinates":[
+                        [[6.6293,45.8592],[6.6288,45.8586],[6.6275,45.8582],[6.6267,45.8581],[6.6271,45.8595]],
+                        [[6.6275,45.8592],[6.6266,45.8587],[6.6261,45.8588],[6.6268,45.8596],[6.6274,45.8608]],
+                        [[6.6274,45.8608],[6.6262,45.8603],[6.6255,45.8596],[6.6241,45.8587],[6.6237,45.8584]],
+                        [[6.6237,45.8584],[6.6223,45.8580],[6.6209,45.8576],[6.6206,45.8574]],
+                        [[6.6315,45.8538],[6.6313,45.8558],[6.6311,45.8576],[6.6312,45.8590]],
+                        [[6.6312,45.8590],[6.6306,45.8599],[6.6305,45.8611],[6.6320,45.8638],[6.6336,45.8656]],
+                        [[6.6336,45.8656],[6.6322,45.8651],[6.6304,45.8635],[6.6291,45.8621],[6.6274,45.8608]]
+                    ]
+                }
+            }]
+        };
+        L.geoJSON(circuitData, { style: { color: '#005587', weight: 4, opacity: 0.3 } }).addTo(map);
+
+        const hotels = [
+            { name: "Mamie Megève", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
+            { name: "Mont d'Arbois", coords: [45.8538, 6.6317], icon: "images/logomontdarbois.png" },
+            { name: "L'Arboisie", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
+            { name: "Village", coords: [45.8575, 6.6206], icon: "images/logovillage.png" }
+        ];
+        hotels.forEach(h => { L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [50, 50], iconAnchor: [25, 50] }) }).addTo(map); });
+
+        // --- GESTIONNAIRE ---
+        function toggleManager(show) { document.getElementById('manager-overlay').style.display = show ? 'flex' : 'none'; if(show) switchTab(currentTab); }
+
+        async function switchTab(tab) {
+            currentTab = tab; 
+            document.getElementById('btn-tab-v').className = tab === 'v' ? 'tab-btn active' : 'tab-btn';
+            document.getElementById('btn-tab-c').className = tab === 'c' ? 'tab-btn active' : 'tab-btn';
+            let html = "";
+            if(tab === 'v') {
+                const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
+                const devices = await res.json();
+                html = `<div class="form-group">
+                            <input id="f-pseudo" placeholder="Nom (ex: N6000 Alex)">
+                            <input id="f-imei" placeholder="IMEI (ex: 73312666)">
+                            <input id="f-model" placeholder="Modèle">
+                            <input id="f-plate" placeholder="Immatriculation">
+                            <button onclick="addDevice()" style="background:var(--primary); color:white; border:none; padding:10px; border-radius:5px;">Ajouter Véhicule</button>
+                        </div>`;
+                devices.forEach(d => { 
+                    html += `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee; align-items:center;">
+                                <span><b style="color:var(--primary)">${d.name}</b><br><small>IMEI: <b>${d.uniqueId}</b></small></span>
+                                <button onclick="deleteApi('devices', ${d.id})" style="color:var(--danger); background:none; border:none; cursor:pointer;">🗑️</button>
+                             </div>`; 
+                });
+            } else {
+                const res = await fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } });
+                const drivers = await res.json();
+                html = `<div class="form-group"><input id="d-name" placeholder="Nom"><input id="d-pin" placeholder="PIN"><button onclick="addDriver()" style="background:var(--success); color:white; border:none; padding:10px; border-radius:5px;">Ajouter Conducteur</button></div>`;
+                drivers.forEach(d => { 
+                    html += `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee; align-items:center;">
+                                <span>👤 <b>${d.name}</b> (PIN: ${d.uniqueId})</span>
+                                <button onclick="deleteApi('drivers', ${d.id})" style="color:var(--danger); background:none; border:none; cursor:pointer;">🗑️</button>
+                             </div>`; 
+                });
+            }
+            document.getElementById('tab-content').innerHTML = html;
+        }
+
+        async function addDevice() {
+            const body = { name: document.getElementById('f-pseudo').value, uniqueId: document.getElementById('f-imei').value, attributes: { model: document.getElementById('f-model').value, plate: document.getElementById('f-plate').value } };
+            await fetch(`${TRACCAR_URL}/api/devices`, { method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            switchTab('v'); updateAdmin();
+        }
+
+        async function addDriver() {
+            const body = { name: document.getElementById('d-name').value, uniqueId: document.getElementById('d-pin').value };
+            await fetch(`${TRACCAR_URL}/api/drivers`, { method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            switchTab('c');
+        }
+
+        async function deleteApi(endpoint, id) { if(confirm("Supprimer ?")) { await fetch(`${TRACCAR_URL}/api/${endpoint}/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH } }); switchTab(currentTab); updateAdmin(); } }
 
         // --- UPDATE LOOP ---
         async function updateAdmin() {
@@ -89,15 +174,13 @@
                 devices.forEach(dev => {
                     const pos = positions.find(p => p.deviceId === dev.id);
                     const active = !dev.attributes.hideClient;
-                    const statusText = dev.attributes.driverStatus || "En service";
+                    const statusText = dev.attributes.driverStatus || (active ? "En service" : "Libéré par Admin");
                     
-                    // Logique des alertes
                     let badgeClass = active ? "status-online" : "status-offline";
                     let alertIcon = active ? "✅" : "📣";
                     
                     if (statusText.includes("Accident")) { badgeClass = "status-alert"; alertIcon = "⚠️"; }
                     else if (statusText.includes("Trafic")) { badgeClass = "status-warning"; alertIcon = "🚗"; }
-                    else if (statusText.includes("Pause") || statusText.includes("Plein")) { badgeClass = "status-warning"; alertIcon = "☕"; }
 
                     let card = document.getElementById(`card-${dev.id}`);
                     if (!card) { card = document.createElement('div'); card.id = `card-${dev.id}`; list.appendChild(card); }
@@ -125,7 +208,7 @@
                         if (!fleetMarkers[dev.id]) fleetMarkers[dev.id] = L.marker([pos.latitude, pos.longitude]).addTo(map);
                         fleetMarkers[dev.id].setLatLng([pos.latitude, pos.longitude]);
                         fleetMarkers[dev.id].setIcon(L.divIcon({ 
-                            html: `<div style="position:relative;"><div style="width:30px; height:30px; background:white; border:3px solid ${statusText.includes("Accident") ? 'var(--danger)' : 'var(--primary)'}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.2)"><img src="images/van.png" style="width:18px;"></div></div>`, 
+                            html: `<div style="width:30px; height:30px; background:white; border:3px solid ${statusText.includes("Accident") ? 'var(--danger)' : 'var(--primary)'}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.2)"><img src="images/van.png" style="width:18px;"></div>`, 
                             className: '', iconSize:[30,30], iconAnchor:[15,15] 
                         }));
                         fleetMarkers[dev.id].setOpacity(active ? 1 : 0.4);
@@ -146,7 +229,6 @@
 
         setInterval(updateAdmin, 4000);
         updateAdmin();
-        // Les fonctions switchTab, addDevice, etc. restent identiques...
     </script>
 </body>
 </html>
