@@ -16,18 +16,18 @@
         .sw-btn { padding: 8px 15px; border-radius: 40px; border: none; font-size: 11px; font-weight: bold; cursor: pointer; background: transparent; color: #666; white-space: nowrap; }
         .sw-btn.active { background: #005587; color: white; }
 
-        /* Boutons de commande bas droit */
+        /* Boutons de commande bas droit (Style captures d'écran) */
         .map-controls { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px; }
-        .ctrl-btn { width: 55px; height: 55px; border-radius: 50%; background: white; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; padding: 12px; }
-        .ctrl-btn img { width: 100%; height: auto; }
+        .ctrl-btn { width: 55px; height: 55px; border-radius: 50%; background: white; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; padding: 10px; }
+        .ctrl-btn img { width: 32px; height: 32px; }
         .ctrl-btn.active { background: #005587; }
-        .ctrl-btn.active img { filter: brightness(0) invert(1); } /* Inverse la couleur de l'icône en blanc si actif */
+        .ctrl-btn.active img { filter: brightness(0) invert(1); } 
 
-        /* Styles Navette */
+        /* Styles Navette (Taille corrigée) */
         .navette-container { position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
         .navette-label { background: #005587; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; position: absolute; top: -22px; white-space: nowrap; font-weight: bold; }
         .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid #005587; display: flex; align-items: center; justify-content: center; }
-        .bus-circle img { width: 20px; }
+        .bus-circle img { width: 22px; height: 22px; display: block; } /* Taille forcée du van */
         
         .user-dot { width: 14px; height: 14px; background: #2196F3; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
     </style>
@@ -50,20 +50,36 @@
     <script>
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
+        
+        const hotels = [
+            { "name": "Mamie Megève", "coords": [45.8593, 6.6291], "icon": "images/logomamiemegeve.png" },
+            { "name": "Mont d'Arbois", "coords": [45.8538, 6.6317], "icon": "images/logomontdarbois.png" },
+            { "name": "L'Arboisie", "coords": [45.8586, 6.6276], "icon": "images/logolarboisie.png" },
+            { "name": "Village", "coords": [45.8575, 6.6206], "icon": "images/logovillage.png" }
+        ];
+
         let shuttles = {}; 
         let followId = null; 
         let userMarker = null;
-        let mode = 'shuttle'; // 'shuttle', 'user', or 'none'
+        let mode = 'shuttle'; 
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Au clic sur une navette : on change l'ID et on force le mode shuttle
+        // --- TRACÉ DU CIRCUIT ---
+        const circuitData = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6293,45.8592],[6.6288,45.8586],[6.6275,45.8582],[6.6267,45.8581],[6.6271,45.8595]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6275,45.8592],[6.6266,45.8587],[6.6261,45.8588],[6.6268,45.8596],[6.6274,45.8608]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6274,45.8608],[6.6262,45.8603],[6.6255,45.8596],[6.6241,45.8587],[6.6237,45.8584]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6237,45.8584],[6.6223,45.8580],[6.6209,45.8576],[6.6206,45.8574]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6315,45.8538],[6.6313,45.8558],[6.6311,45.8576],[6.6312,45.8590]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6312,45.8590],[6.6306,45.8599],[6.6305,45.8611],[6.6320,45.8638],[6.6336,45.8656]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6336,45.8656],[6.6322,45.8651],[6.6304,45.8635],[6.6291,45.8621],[6.6274,45.8608]]}}]}
+        L.geoJSON(circuitData, { style: { color: '#005587', weight: 4, opacity: 0.3 } }).addTo(map);
+
+        // --- ARRÊTS ---
+        hotels.forEach(h => { 
+            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [50, 50], iconAnchor: [25, 50] }) }).addTo(map); 
+        });
+
         function selectShuttle(id) {
             followId = id;
             mode = 'shuttle';
             updateUI();
-            updatePositions(); // Force le centrage immédiat
+            updatePositions();
         }
 
         function toggleFollow(newMode) {
@@ -75,9 +91,6 @@
         function updateUI() {
             document.getElementById('btn-user').className = 'ctrl-btn' + (mode === 'user' ? ' active' : '');
             document.getElementById('btn-shuttle').className = 'ctrl-btn' + (mode === 'shuttle' ? ' active' : '');
-            // On rafraîchit les classes des boutons du switcher
-            const btns = document.querySelectorAll('.sw-btn');
-            btns.forEach(b => b.classList.remove('active'));
         }
 
         async function updatePositions() {
@@ -107,7 +120,6 @@
                             className: '', iconSize: [40, 40], iconAnchor: [20, 20] 
                         }));
                         
-                        // CENTRAGE AUTOMATIQUE (1 SEUL CLIC)
                         if (followId === dev.id && mode === 'shuttle') map.panTo(latlng);
                     }
                 });
@@ -124,6 +136,7 @@
         map.locate({watch: true, enableHighAccuracy: true});
         setInterval(updatePositions, 4000);
         updatePositions();
+        setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 1000);
     </script>
 </body>
 </html>
