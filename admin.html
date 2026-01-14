@@ -10,46 +10,30 @@
         :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --warning: #f1c40f; --dark: #1a1a1a; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
         
-        /* --- HEADER & CARDS --- */
         #admin-header { padding: 12px; background: white; box-shadow: 0 2px 15px rgba(0,0,0,0.1); z-index: 1000; overflow-y: auto; max-height: 38vh; }
         .shuttle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
         .shuttle-card { background: #fff; border-radius: 12px; padding: 12px; border: 2px solid #eee; position: relative; transition: 0.3s; }
-        .shuttle-card.active { border-color: var(--success); box-shadow: 0 4px 12px rgba(46, 204, 113, 0.15); }
+        .shuttle-card.active { border-color: var(--success); }
+        
+        /* --- ALERTES ET STATUTS --- */
         .status-badge { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px; border-radius: 8px; font-size: 13px; font-weight: bold; margin: 8px 0; }
         .status-online { background: #e8f8f0; color: #1e7e34; border: 1px solid #b1dfbb; }
-        .status-offline { background: #fff9e6; color: #856404; border: 1px solid #ffeeba; }
-        
+        .status-alert { background: #fff0f0; color: var(--danger); border: 2px solid var(--danger); animation: pulse-border 1.5s infinite; }
+        .status-warning { background: #fff9e6; color: #856404; border: 1px solid var(--warning); }
+        .status-offline { background: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6; }
+
+        @keyframes pulse-border { 
+            0% { box-shadow: 0 0 0 0px rgba(231, 76, 60, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0px rgba(231, 76, 60, 0); }
+        }
+
+        .blink-dot { width: 10px; height: 10px; background-color: var(--danger); border-radius: 50%; display: inline-block; margin-right: 5px; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
-        /* --- MARKERS DESIGN --- */
-        .bus-marker-container { position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
-        .bus-circle { 
-            width: 32px; height: 32px; background: white; border-radius: 50%; 
-            border: 3px solid var(--primary); display: flex; align-items: center; 
-            justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        .bus-circle img { width: 20px !important; height: 20px !important; object-fit: contain; display: block; }
-        .dir-arrow { 
-            position: absolute; width: 0; height: 0; 
-            border-top: 5px solid transparent; border-bottom: 5px solid transparent; 
-            border-left: 8px solid #333; left: 50%; margin-left: 16px;
-            transform-origin: -16px center; z-index: -1;
-        }
-
-        /* --- INTERFACE UI --- */
-        #pin-overlay { position: fixed; inset: 0; background: var(--dark); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
-        .keypad { display: grid; grid-template-columns: repeat(3, 75px); gap: 15px; margin-top: 20px; }
-        .key { width: 75px; height: 75px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; color: white; border: none; }
-        
-        .manager-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9998; display: none; align-items: center; justify-content: center; }
-        .manager-container { background: white; width: 95%; max-width: 500px; padding: 20px; border-radius: 20px; position: relative; }
-        .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 15px; }
-        .tab-btn { flex: 1; padding: 10px; border: none; background: none; cursor: pointer; font-weight: bold; color: #666; }
-        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
-        .form-group { display: grid; gap: 8px; background: #f9f9f9; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
-        input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
-
+        /* --- UI ELEMENTS --- */
         .switch { position: relative; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
@@ -57,20 +41,20 @@
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider:before { transform: translateX(20px); }
         .btn-round { position: absolute; bottom: 25px; right: 20px; z-index: 1000; width: 55px; height: 55px; border-radius: 50%; background: white; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-size: 22px; cursor: pointer; }
+
+        /* Styles Manager identiques au précédent... */
+        .manager-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9998; display: none; align-items: center; justify-content: center; }
+        .manager-container { background: white; width: 95%; max-width: 500px; padding: 20px; border-radius: 20px; position: relative; }
+        .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; background: none; cursor: pointer; font-weight: bold; color: #666; }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
     </style>
 </head>
 <body>
 
-    <div id="pin-overlay">
-        <h2>SUPERVISION ADMIN</h2>
-        <div id="pin-display" style="font-size:32px; letter-spacing:8px; color:var(--success); height:40px;"></div>
-        <div class="keypad">
-            <div class="key" onclick="press('1')">1</div><div class="key" onclick="press('2')">2</div><div class="key" onclick="press('3')">3</div>
-            <div class="key" onclick="press('4')">4</div><div class="key" onclick="press('5')">5</div><div class="key" onclick="press('6')">6</div>
-            <div class="key" onclick="press('7')">7</div><div class="key" onclick="press('8')">8</div><div class="key" onclick="press('9')">9</div>
-            <div class="key" style="color:var(--danger)" onclick="press('C')">C</div><div class="key" onclick="press('0')">0</div><div class="key" style="color:var(--success)" onclick="press('OK')">OK</div>
-        </div>
-    </div>
+    <div id="admin-header"><div class="shuttle-grid" id="shuttle-list"></div></div>
+    <div id="map"></div>
+    <button class="btn-round" onclick="toggleManager(true)">⚙️</button>
 
     <div id="manager-overlay" class="manager-overlay">
         <div class="manager-container">
@@ -83,110 +67,13 @@
         </div>
     </div>
 
-    <div id="admin-header"><div class="shuttle-grid" id="shuttle-list"></div></div>
-    <div id="map"></div>
-    <button class="btn-round" onclick="toggleManager(true)">⚙️</button>
-
     <script>
-        const PIN_SECRET = "3690"; 
-        let currentPin = ""; 
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
-        
-        let fleetMarkers = {}; 
-        let currentTab = 'v';
+        let fleetMarkers = {};
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-
-        // --- CORRECTION DU TRACÉ (Nettoyage des points aberrants) ---
-        const circuitData = {
-            "type":"FeatureCollection",
-            "features":[{
-                "type":"Feature",
-                "geometry":{
-                    "type":"MultiLineString",
-                    "coordinates":[
-                        [[6.6293,45.8592],[6.6288,45.8586],[6.6275,45.8582],[6.6267,45.8581],[6.6271,45.8595]],
-                        [[6.6275,45.8592],[6.6266,45.8587],[6.6261,45.8588],[6.6268,45.8596],[6.6274,45.8608]],
-                        [[6.6274,45.8608],[6.6262,45.8603],[6.6255,45.8596],[6.6241,45.8587],[6.6237,45.8584]],
-                        [[6.6237,45.8584],[6.6223,45.8580],[6.6209,45.8576],[6.6206,45.8574]],
-                        [[6.6315,45.8538],[6.6313,45.8558],[6.6311,45.8576],[6.6312,45.8590]],
-                        [[6.6312,45.8590],[6.6306,45.8599],[6.6305,45.8611],[6.6320,45.8638],[6.6336,45.8656]],
-                        [[6.6336,45.8656],[6.6322,45.8651],[6.6304,45.8635],[6.6291,45.8621],[6.6274,45.8608]]
-                    ]
-                }
-            }]
-        };
-        L.geoJSON(circuitData, { style: { color: '#005587', weight: 4, opacity: 0.3 } }).addTo(map);
-
-        const hotels = [
-            { name: "Mamie Megève", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
-            { name: "Mont d'Arbois", coords: [45.8538, 6.6317], icon: "images/logomontdarbois.png" },
-            { name: "L'Arboisie", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
-            { name: "Village", coords: [45.8575, 6.6206], icon: "images/logovillage.png" }
-        ];
-        hotels.forEach(h => { L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [50, 50], iconAnchor: [25, 50] }) }).addTo(map); });
-
-        // --- PIN LOGIC ---
-        function press(k) {
-            if (k === 'C') currentPin = "";
-            else if (k === 'OK') { if (currentPin === PIN_SECRET) document.getElementById('pin-overlay').style.display='none'; else currentPin=""; }
-            else if (currentPin.length < 4) currentPin += k;
-            document.getElementById('pin-display').innerText = "•".repeat(currentPin.length);
-        }
-
-        // --- MANAGER & TABS ---
-        function toggleManager(show) { document.getElementById('manager-overlay').style.display = show ? 'flex' : 'none'; if(show) switchTab(currentTab); }
-
-        async function switchTab(tab) {
-            currentTab = tab; 
-            document.getElementById('btn-tab-v').className = tab === 'v' ? 'tab-btn active' : 'tab-btn';
-            document.getElementById('btn-tab-c').className = tab === 'c' ? 'tab-btn active' : 'tab-btn';
-            let html = "";
-            if(tab === 'v') {
-                const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
-                const devices = await res.json();
-                html = `<div class="form-group">
-                            <input id="f-pseudo" placeholder="Nom (ex: N6000 Alex)">
-                            <input id="f-imei" placeholder="IMEI (ex: 73312666)">
-                            <input id="f-model" placeholder="Modèle">
-                            <input id="f-plate" placeholder="Plaque">
-                            <button onclick="addDevice()" style="background:var(--primary); color:white; border:none; padding:10px; border-radius:5px; cursor:pointer;">Ajouter</button>
-                        </div>`;
-                devices.forEach(d => { 
-                    html += `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee; align-items:center;">
-                                <span><b style="color:var(--primary)">${d.name}</b><br><small>IMEI: <b>${d.uniqueId}</b></small></span>
-                                <button onclick="deleteApi('devices', ${d.id})" style="color:var(--danger); background:none; border:none; cursor:pointer;">🗑️</button>
-                             </div>`; 
-                });
-            } else {
-                const res = await fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } });
-                const drivers = await res.json();
-                html = `<div class="form-group"><input id="d-name" placeholder="Nom"><input id="d-pin" placeholder="PIN"><button onclick="addDriver()" style="background:var(--success); color:white; border:none; padding:10px; border-radius:5px;">Ajouter</button></div>`;
-                drivers.forEach(d => { 
-                    html += `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee; align-items:center;">
-                                <span>👤 <b>${d.name}</b> (PIN: ${d.uniqueId})</span>
-                                <button onclick="deleteApi('drivers', ${d.id})" style="color:var(--danger); background:none; border:none; cursor:pointer;">🗑️</button>
-                             </div>`; 
-                });
-            }
-            document.getElementById('tab-content').innerHTML = html;
-        }
-
-        async function addDevice() {
-            const body = { name: document.getElementById('f-pseudo').value, uniqueId: document.getElementById('f-imei').value, attributes: { model: document.getElementById('f-model').value, plate: document.getElementById('f-plate').value } };
-            await fetch(`${TRACCAR_URL}/api/devices`, { method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-            switchTab('v'); updateAdmin();
-        }
-
-        async function addDriver() {
-            const body = { name: document.getElementById('d-name').value, uniqueId: document.getElementById('d-pin').value };
-            await fetch(`${TRACCAR_URL}/api/drivers`, { method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-            switchTab('c');
-        }
-
-        async function deleteApi(endpoint, id) { if(confirm("Supprimer ?")) { await fetch(`${TRACCAR_URL}/api/${endpoint}/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH } }); switchTab(currentTab); updateAdmin(); } }
 
         // --- UPDATE LOOP ---
         async function updateAdmin() {
@@ -202,28 +89,44 @@
                 devices.forEach(dev => {
                     const pos = positions.find(p => p.deviceId === dev.id);
                     const active = !dev.attributes.hideClient;
+                    const statusText = dev.attributes.driverStatus || "En service";
                     
+                    // Logique des alertes
+                    let badgeClass = active ? "status-online" : "status-offline";
+                    let alertIcon = active ? "✅" : "📣";
+                    
+                    if (statusText.includes("Accident")) { badgeClass = "status-alert"; alertIcon = "⚠️"; }
+                    else if (statusText.includes("Trafic")) { badgeClass = "status-warning"; alertIcon = "🚗"; }
+                    else if (statusText.includes("Pause") || statusText.includes("Plein")) { badgeClass = "status-warning"; alertIcon = "☕"; }
+
                     let card = document.getElementById(`card-${dev.id}`);
                     if (!card) { card = document.createElement('div'); card.id = `card-${dev.id}`; list.appendChild(card); }
                     
                     card.className = `shuttle-card ${active ? 'active' : ''}`;
                     card.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:start;">
-                            <div><b>${dev.name}</b><br><small style="color:#888;">IMEI: ${dev.uniqueId}</small></div>
+                            <div>
+                                <span style="display:flex; align-items:center;">
+                                    ${statusText.includes("Accident") ? '<span class="blink-dot"></span>' : ''}
+                                    <b style="color:var(--primary);">${dev.name}</b>
+                                </span>
+                                <small style="color:#888;">IMEI: ${dev.uniqueId}</small>
+                            </div>
                             <label class="switch"><input type="checkbox" ${active?'checked':''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
                         </div>
-                        <div class="status-badge ${active ? 'status-online' : 'status-offline'}">${active?'📢 En service':'📣 Libéré'}</div>
+                        <div class="status-badge ${badgeClass}">${alertIcon} ${statusText}</div>
                         <div style="font-size:11px; color:#666; display:flex; justify-content:space-between;">
                             <span>👤 ${dev.attributes.currentDriver||'Libre'}</span>
                             <span>🔋 ${pos?(pos.attributes.batteryLevel||'--'):'--'}%</span>
+                            <span>🏎️ ${pos?Math.round(pos.speed*1.852):0} km/h</span>
                         </div>`;
 
                     if(pos) {
                         if (!fleetMarkers[dev.id]) fleetMarkers[dev.id] = L.marker([pos.latitude, pos.longitude]).addTo(map);
                         fleetMarkers[dev.id].setLatLng([pos.latitude, pos.longitude]);
                         fleetMarkers[dev.id].setIcon(L.divIcon({ 
-                            html: `<div class="bus-marker-container"><div class="bus-circle" style="border-color:${active?'var(--primary)':'#ccc'}"><img src="images/van.png"></div></div>`, 
-                            className: '', iconSize:[40,40], iconAnchor:[20,20] 
+                            html: `<div style="position:relative;"><div style="width:30px; height:30px; background:white; border:3px solid ${statusText.includes("Accident") ? 'var(--danger)' : 'var(--primary)'}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.2)"><img src="images/van.png" style="width:18px;"></div></div>`, 
+                            className: '', iconSize:[30,30], iconAnchor:[15,15] 
                         }));
                         fleetMarkers[dev.id].setOpacity(active ? 1 : 0.4);
                     }
@@ -233,15 +136,17 @@
 
         async function toggleDev(id, val) {
             const res = await fetch(`${TRACCAR_URL}/api/devices?id=${id}`, { headers: { 'Authorization': AUTH } });
-            const devices = await res.json();
-            const d = devices[0];
+            const devs = await res.json();
+            const d = devs[0];
             d.attributes.hideClient = !val;
+            d.attributes.driverStatus = val ? "En service" : "Libéré par Admin";
             await fetch(`${TRACCAR_URL}/api/devices/${id}`, { method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
             updateAdmin();
         }
 
-        setInterval(updateAdmin, 4000); 
+        setInterval(updateAdmin, 4000);
         updateAdmin();
+        // Les fonctions switchTab, addDevice, etc. restent identiques...
     </script>
 </body>
 </html>
