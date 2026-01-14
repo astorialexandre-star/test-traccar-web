@@ -2,52 +2,43 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ADMIN - Gestion 369 Shuttles</title>
+    <title>ADMIN - 369 Shuttles</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --dark: #1a1a1a; }
-        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
-        
-        #admin-header { padding: 15px; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; overflow-y: auto; max-height: 40vh; }
-        .shuttle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
-        .shuttle-card { background: #fff; border-radius: 12px; padding: 12px; border: 2px solid #eee; display: flex; flex-direction: column; gap: 5px; }
+        :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; }
+        body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; background: #f4f7f6; }
+        #admin-header { padding: 10px; background: white; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow-y: auto; max-height: 35vh; }
+        .shuttle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; }
+        .shuttle-card { background: white; border-radius: 10px; padding: 10px; border: 2px solid #eee; }
         .shuttle-card.active { border-color: var(--success); }
-        .shuttle-card.hidden { border-color: #ccc; opacity: 0.6; }
+        #map { flex-grow: 1; z-index: 1; }
         
-        #map { flex-grow: 1; width: 100%; z-index: 1; }
+        /* Clavier & Gestion */
+        #pin-overlay { position: fixed; inset: 0; background: #1a1a1a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        .keypad { display: grid; grid-template-columns: repeat(3, 70px); gap: 15px; margin-top: 20px; }
+        .key { width: 70px; height: 70px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; }
+        
+        .manager-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9998; display: none; align-items: center; justify-content: center; }
+        .manager-container { background: white; width: 90%; max-width: 450px; padding: 20px; border-radius: 15px; position: relative; }
 
-        /* Correction Clavier PIN Complet */
-        #pin-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
-        .keypad { display: grid; grid-template-columns: repeat(3, 75px); gap: 15px; margin-top: 20px; }
-        .key { width: 75px; height: 75px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; }
-        
-        /* Fenêtre de gestion */
-        .manager-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9998; display: none; align-items: center; justify-content: center; }
-        .manager-container { background: white; color: #333; width: 90%; max-width: 500px; padding: 20px; border-radius: 15px; position: relative; }
-        
-        /* Correction icône Van sur carte */
-        .bus-circle { width: 40px; height: 40px; background: white; border-radius: 50%; border: 3px solid var(--primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); overflow: hidden; }
-        .bus-circle img { width: 24px; height: 24px; object-fit: contain; }
+        .bus-circle { width: 38px; height: 38px; background: white; border-radius: 50%; border: 3px solid var(--primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .bus-circle img { width: 22px; height: 22px; }
+        .direction-arrow { position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 8px solid #333; margin-top: -5px; margin-left: 17px; transform-origin: -17px center; }
 
-        .switch { position: relative; width: 40px; height: 22px; }
+        .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; border-radius: 34px; transition: .4s; }
         input:checked + .slider { background-color: var(--success); }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider:before { transform: translateX(18px); }
-
-        .map-btns { position: absolute; bottom: 25px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
-        .btn-round { width: 55px; height: 55px; border-radius: 50%; background: white; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; font-size: 22px; }
-        .driver-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .4s; }
+        input:checked + .slider:before { transform: translateX(14px); }
     </style>
 </head>
 <body>
-
     <div id="pin-overlay">
-        <h2>SUPERVISION ADMIN</h2>
-        <div id="pin-display" style="font-size:32px; letter-spacing:8px; color:var(--success); height:40px;"></div>
+        <h2>ADMIN PIN</h2>
+        <div id="pin-display" style="font-size:30px; color:var(--success); height:40px;"></div>
         <div class="keypad">
             <div class="key" onclick="press('1')">1</div><div class="key" onclick="press('2')">2</div><div class="key" onclick="press('3')">3</div>
             <div class="key" onclick="press('4')">4</div><div class="key" onclick="press('5')">5</div><div class="key" onclick="press('6')">6</div>
@@ -59,114 +50,61 @@
     <div id="manager-overlay" class="manager-overlay">
         <div class="manager-container">
             <span style="position:absolute; top:10px; right:15px; font-size:24px; cursor:pointer;" onclick="toggleManager(false)">&times;</span>
-            <div style="display:flex; margin-bottom:15px; border:1px solid #ddd; border-radius:8px; overflow:hidden;">
-                <button id="tab-drivers" style="flex:1; padding:10px; border:none; cursor:pointer;" onclick="switchTab('drivers')">Conducteurs</button>
-                <button id="tab-fleet" style="flex:1; padding:10px; border:none; cursor:pointer;" onclick="switchTab('fleet')">Flotte</button>
-            </div>
-            <div id="manager-content" style="max-height: 400px; overflow-y: auto;"></div>
+            <div id="manager-content"></div>
         </div>
     </div>
 
     <div id="admin-header"><div class="shuttle-grid" id="shuttle-list"></div></div>
     <div id="map"></div>
-    <div class="map-btns"><button class="btn-round" onclick="toggleManager(true)">⚙️</button></div>
+    <div style="position:absolute; bottom:20px; right:20px; z-index:1000;"><button onclick="toggleManager(true)" style="width:50px; height:50px; border-radius:50%; border:none; background:white; box-shadow:0 2px 10px rgba(0,0,0,0.2); font-size:20px;">⚙️</button></div>
 
     <script>
-        const PIN_SECRET = "3690";
-        let currentPin = "";
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
-        let fleetData = {};
+        let currentPin = ""; let fleetMarkers = {};
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
+        // Circuit & Hotels pour l'admin aussi
+        const circuitData = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.629327,45.859227],[6.629352,45.859139],[6.629369,45.859059],[6.629361,45.858970],[6.629314,45.858899],[6.629255,45.858843],[6.629153,45.858796],[6.629030,45.858754],[6.628877,45.858692],[6.628690,45.858619],[6.628461,45.858521],[6.628291,45.858447],[6.628192,45.858403],[6.628052,45.858371],[6.627895,45.858341],[6.627708,45.858306],[6.627564,45.858276],[6.627428,45.858238],[6.627330,45.858181],[6.627224,45.858134],[6.627135,45.858081],[6.627004,45.858048],[6.626842,45.858051],[6.626753,45.858102],[6.626707,45.858187],[6.626766,45.858261],[6.626889,45.858353],[6.627059,45.858492],[6.627190,45.858595],[6.627313,45.858707],[6.627398,45.858778],[6.627564,45.858894],[6.627747,45.858956],[6.627937,45.859003],[6.628044,45.859062],[6.628073,45.859151],[6.627982,45.859270],[6.627848,45.859299],[6.627689,45.859269],[6.627551,45.859234]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.627548,45.859232],[6.627420,45.859201],[6.627136,45.859131],[6.626844,45.858992],[6.626603,45.858758],[6.626276,45.858611],[6.626118,45.858680],[6.626159,45.858863],[6.626514,45.859240],[6.626854,45.859639],[6.627108,45.859871],[6.627349,45.860312],[6.627438,45.860869],[6.627041,45.860568],[6.626224,45.860300],[6.626028,45.860097],[6.625535,45.859664],[6.625089,45.859361],[6.624640,45.859091],[6.624190,45.858753],[6.623778,45.858472]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.623778,45.858472],[6.623050,45.858262],[6.622379,45.858004],[6.621634,45.857747],[6.620984,45.857615],[6.620851,45.857641],[6.620729,45.857588],[6.620748,45.857562],[6.620658,45.857497],[6.620737,45.857529],[6.620898,45.857593],[6.620970,45.857613]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631599,45.853848],[6.631526,45.854377],[6.631436,45.855170],[6.631368,45.855894],[6.631256,45.856669],[6.631171,45.857162],[6.631103,45.857644],[6.631126,45.858208],[6.631247,45.858865],[6.631296,45.859061]]}},{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631295,45.859061],[6.631196,45.859342],[6.630607,45.859949],[6.630039,45.860571],[6.630101,45.860843],[6.630560,45.861179],[6.631005,45.861818],[6.631160,45.862401],[6.631349,45.862799],[6.631745,45.863157],[6.632047,45.863829],[6.632563,45.864357],[6.632827,45.864952],[6.633118,45.865281],[6.633651,45.865602],[6.633606,45.865833],[6.632256,45.865130],[6.631747,45.864633],[6.631235,45.864068],[6.630441,45.863589],[6.629704,45.863008],[6.629313,45.862561],[6.629117,45.862146],[6.628441,45.861607],[6.627921,45.861233],[6.627438,45.860869]]}}]}
+        L.geoJSON(circuitData, { style: { color: '#3388ff', weight: 4, opacity: 0.2 } }).addTo(map);
+
         function press(k) {
-            if (k === 'C') currentPin = "";
-            else if (k === 'OK') {
-                if (currentPin === PIN_SECRET) document.getElementById('pin-overlay').style.display='none';
-                else { alert("Code incorrect"); currentPin=""; }
-            } else if (currentPin.length < 4) currentPin += k;
+            if(k==='C') currentPin=""; 
+            else if(k==='OK') { if(currentPin==="3690") document.getElementById('pin-overlay').style.display='none'; else currentPin=""; }
+            else if(currentPin.length<4) currentPin+=k;
             document.getElementById('pin-display').innerText = "•".repeat(currentPin.length);
-        }
-
-        function toggleManager(show) { document.getElementById('manager-overlay').style.display = show ? 'flex' : 'none'; if(show) switchTab('drivers'); }
-        
-        function switchTab(tab) {
-            document.getElementById('tab-drivers').style.background = tab==='drivers'?'#005587':'#eee';
-            document.getElementById('tab-drivers').style.color = tab==='drivers'?'white':'#333';
-            document.getElementById('tab-fleet').style.background = tab==='fleet'?'#005587':'#eee';
-            document.getElementById('tab-fleet').style.color = tab==='fleet'?'white':'#333';
-            tab === 'drivers' ? renderDrivers() : renderFleet();
-        }
-
-        async function renderDrivers() {
-            const res = await fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } });
-            const drivers = await res.json();
-            let html = `<div style="display:flex; gap:5px; margin-bottom:10px;"><input id="in-n" placeholder="Nom" style="flex:1;padding:8px;"><input id="in-p" placeholder="PIN" style="width:60px;padding:8px;"><button onclick="apiDriver('POST')" style="background:var(--success); color:white; border:none; padding:8px;">+</button></div>`;
-            drivers.forEach(d => html += `<div class="driver-row"><span>${d.name} (${d.uniqueId})</span><button onclick="apiDriver('DELETE', ${d.id})" style="color:var(--danger); border:none; background:none;">🗑️</button></div>`);
-            document.getElementById('manager-content').innerHTML = html;
-        }
-
-        async function apiDriver(method, id) {
-            let url = id ? `${TRACCAR_URL}/api/drivers/${id}` : `${TRACCAR_URL}/api/drivers`;
-            let body = method==='POST' ? JSON.stringify({name: document.getElementById('in-n').value, uniqueId: document.getElementById('in-p').value}) : null;
-            await fetch(url, { method: method, headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: body });
-            renderDrivers();
-        }
-
-        async function renderFleet() {
-            const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
-            const devices = await res.json();
-            let html = `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:8px;">
-                <input id="f-pseudo" placeholder="Pseudo" style="grid-column: span 2; padding:8px;">
-                <input id="f-model" placeholder="Modèle" style="padding:8px;">
-                <input id="f-plate" placeholder="Immat" style="padding:8px;">
-                <input id="f-imei" placeholder="IMEI" style="grid-column: span 2; padding:8px;">
-                <button onclick="apiFleet('POST')" style="grid-column: span 2; background:var(--primary); color:white; border:none; padding:10px; border-radius:4px;">Ajouter Véhicule</button>
-            </div>`;
-            devices.forEach(d => {
-                html += `<div class="driver-row"><div><b>${d.name}</b><br><small>${d.attributes.model || ''} - ${d.attributes.plate || ''}</small></div><button onclick="apiFleet('DELETE', ${d.id})" style="color:var(--danger); border:none; background:none; font-size:20px;">×</button></div>`;
-            });
-            document.getElementById('manager-content').innerHTML = html;
-        }
-
-        async function apiFleet(method, id) {
-            let url = id ? `${TRACCAR_URL}/api/devices/${id}` : `${TRACCAR_URL}/api/devices`;
-            let body = method==='POST' ? JSON.stringify({
-                name: document.getElementById('f-pseudo').value,
-                uniqueId: document.getElementById('f-imei').value,
-                attributes: { model: document.getElementById('f-model').value, plate: document.getElementById('f-plate').value }
-            }) : null;
-            if(method==='DELETE' && !confirm("Supprimer ?")) return;
-            await fetch(url, { method: method, headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: body });
-            renderFleet(); updateAdmin();
         }
 
         async function updateAdmin() {
             try {
-                const devRes = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
-                const devices = await devRes.json();
+                const [resDev, resPos] = await Promise.all([
+                    fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
+                    fetch(`${TRACCAR_URL}/api/positions`, { headers: { 'Authorization': AUTH } })
+                ]);
+                const devices = await resDev.json();
+                const positions = await resPos.json();
                 const list = document.getElementById('shuttle-list');
-                
-                devices.forEach(async dev => {
+
+                devices.forEach(dev => {
+                    const pos = positions.find(p => p.deviceId === dev.id);
                     const active = !dev.attributes.hideClient;
                     let card = document.getElementById(`card-${dev.id}`);
-                    if (!card) { card = document.createElement('div'); card.id = `card-${dev.id}`; list.appendChild(card); }
-                    card.className = `shuttle-card ${active ? 'active' : 'hidden'}`;
-                    card.innerHTML = `<div style="display:flex; justify-content:space-between;">
-                        <div><b>🚐 ${dev.name}</b><br><small>${dev.attributes.model || ''} | ${dev.attributes.plate || ''}</small><br><small>👤 ${dev.attributes.currentDriver || 'Libre'}</small></div>
-                        <label class="switch"><input type="checkbox" ${active ? 'checked' : ''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
-                    </div><div id="stats-${dev.id}" style="font-size:10px; margin-top:5px; color:#666;">Mise à jour...</div>`;
-                    
-                    const posRes = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${dev.id}`, { headers: { 'Authorization': AUTH } });
-                    const pos = await posRes.json();
-                    if(pos.length > 0) {
-                        const p = pos[0];
-                        document.getElementById(`stats-${dev.id}`).innerText = `🔋 ${p.attributes.batteryLevel || '--'}% | ${Math.round(p.speed*1.852)} km/h | 📍 ${p.address || 'Localisation...'}`;
-                        if (!fleetData[dev.id]) fleetData[dev.id] = { marker: L.marker([p.latitude, p.longitude], { icon: L.divIcon({ html: `<div class="bus-circle"><img src="images/van.png"></div>`, className: '', iconSize:[40,40], iconAnchor:[20,20] }) }).addTo(map) };
-                        else fleetData[dev.id].marker.setLatLng([p.latitude, p.longitude]);
-                        fleetData[dev.id].marker.setOpacity(active ? 1 : 0.2);
+                    if(!card) { card = document.createElement('div'); card.id=`card-${dev.id}`; list.appendChild(card); }
+                    card.className = `shuttle-card ${active?'active':''}`;
+                    card.innerHTML = `<div style="display:flex;justify-content:space-between">
+                        <div><b>🚐 ${dev.name}</b><br><small>${dev.attributes.plate||''}</small></div>
+                        <label class="switch"><input type="checkbox" ${active?'checked':''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
+                    </div>`;
+
+                    if(pos) {
+                        const latlng = [pos.latitude, pos.longitude];
+                        if(!fleetMarkers[dev.id]) fleetMarkers[dev.id] = L.marker(latlng).addTo(map);
+                        fleetMarkers[dev.id].setLatLng(latlng);
+                        const html = `<div style="position:relative"><div class="bus-circle"><img src="images/van.png"></div><div class="direction-arrow" style="transform:rotate(${(pos.course||0)-90}deg)"></div></div>`;
+                        fleetMarkers[dev.id].setIcon(L.divIcon({ html: html, className:'', iconSize:[40,40], iconAnchor:[20,20] }));
+                        fleetMarkers[dev.id].setOpacity(active ? 1 : 0.3);
                     }
                 });
             } catch(e) {}
@@ -174,15 +112,13 @@
 
         async function toggleDev(id, val) {
             const res = await fetch(`${TRACCAR_URL}/api/devices?id=${id}`, { headers: { 'Authorization': AUTH } });
-            const devs = await res.json();
-            const d = devs[0];
+            const d = (await res.json())[0];
             d.attributes.hideClient = !val;
-            await fetch(`${TRACCAR_URL}/api/devices/${id}`, { method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            await fetch(`${TRACCAR_URL}/api/devices/${id}`, { method:'PUT', headers:{'Authorization':AUTH, 'Content-Type':'application/json'}, body:JSON.stringify(d) });
             updateAdmin();
         }
 
-        setInterval(updateAdmin, 4000);
-        updateAdmin();
+        setInterval(updateAdmin, 4000); updateAdmin();
     </script>
 </body>
 </html>
