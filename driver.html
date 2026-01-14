@@ -199,6 +199,8 @@
                 const res = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { headers: { 'Authorization': AUTH }, cache: "no-store" });
                 const devs = await res.json();
                 const dev = devs[0];
+                
+                // On met à jour le switch uniquement si l'état a changé
                 const shouldBeVisible = !dev.attributes.hideClient;
                 const toggle = document.getElementById('service-toggle');
                 if (toggle.checked !== shouldBeVisible) {
@@ -209,35 +211,46 @@
         }
 
         async function toggleService(isVisible) {
-            isUpdating = true;
+            isUpdating = true; // Bloque la synchro entrante pour éviter le flash
             try {
-                const devices = await fetchDevices();
-                const dev = devices.find(d => d.id == currentDeviceId);
+                const res = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
+                const devs = await res.json();
+                const dev = devs[0];
+                
                 dev.attributes.hideClient = !isVisible;
                 dev.attributes.driverStatus = isVisible ? "En service" : "Hors service";
+                
                 await saveToTraccar(currentDeviceId, dev);
                 updateUI(isVisible);
             } catch (e) {}
-            setTimeout(() => { isUpdating = false; }, 2000);
+            setTimeout(() => { isUpdating = false; }, 3000);
         }
 
         async function sendStatus(label) {
+            isUpdating = true; // Bloque la synchro pour laisser le temps au serveur d'enregistrer
             try {
-                const devices = await fetchDevices();
-                const dev = devices.find(d => d.id == currentDeviceId);
+                const res = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
+                const devs = await res.json();
+                const dev = devs[0];
+
                 dev.attributes.driverStatus = label;
+                
+                // Si c'est une pause ou un plein, on cache la navette
                 if (label.includes('Plein') || label.includes('Pause')) {
                     dev.attributes.hideClient = true;
                     document.getElementById('service-toggle').checked = false;
                     updateUI(false);
                 } else {
+                    // Pour Trafic ou Accident, on s'assure qu'elle est visible
                     dev.attributes.hideClient = false;
                     document.getElementById('service-toggle').checked = true;
                     updateUI(true);
                 }
+                
                 await saveToTraccar(currentDeviceId, dev);
                 showToast(label);
             } catch (e) {}
+            setTimeout(() => { isUpdating = false; }, 3000);
         }
 
         function updateUI(isInService) {
@@ -271,8 +284,10 @@
 
         async function logout() {
             if (confirm("Fin de service ?")) {
-                const devices = await fetchDevices();
-                const dev = devices.find(d => d.id == currentDeviceId);
+                const res = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
+                const devs = await res.json();
+                const dev = devs[0];
+                
                 dev.attributes.currentDriver = "";
                 dev.attributes.hideClient = true;
                 dev.attributes.driverStatus = "Hors service";
