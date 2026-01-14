@@ -42,6 +42,9 @@
         .map-btns { position: absolute; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
         .btn-round { width: 50px; height: 50px; border-radius: 50%; background: white; border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.3); cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
 
+        .keypad { display: grid; grid-template-columns: repeat(3, 75px); gap: 15px; }
+        .key { width: 75px; height: 75px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        
         .tab-btn { padding: 10px; border: none; background: #eee; cursor: pointer; flex: 1; font-weight: bold; }
         .tab-btn.active { background: var(--primary); color: white; }
         .driver-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
@@ -50,11 +53,13 @@
 <body>
 
     <div id="pin-overlay">
-        <h2 style="font-weight: 300;">SUPERVISION ADMIN</h2>
-        <div id="pin-display" style="font-size:32px; letter-spacing:8px; color:var(--success); margin-bottom:20px;"></div>
-        <div class="keypad" style="display:grid; grid-template-columns: repeat(3, 75px); gap:15px;">
-            <div class="key" style="width:75px; height:75px; background:#333; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer;" onclick="press('1')">1</div><div class="key" style="width:75px; height:75px; background:#333; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer;" onclick="press('2')">2</div><div class="key" style="width:75px; height:75px; background:#333; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer;" onclick="press('3')">3</div>
-            <div class="key" style="width:75px; height:75px; background:#333; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer;" onclick="press('C')">C</div><div class="key" style="width:75px; height:75px; background:#333; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer;" onclick="press('0')">0</div><div class="key" style="width:75px; height:75px; background:#333; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer; color:var(--success)" onclick="press('OK')">OK</div>
+        <h2 style="font-weight: 300; margin-bottom:10px;">SUPERVISION ADMIN</h2>
+        <div id="pin-display" style="font-size:32px; letter-spacing:8px; color:var(--success); min-height:40px; margin-bottom:20px;"></div>
+        <div class="keypad">
+            <div class="key" onclick="press('1')">1</div><div class="key" onclick="press('2')">2</div><div class="key" onclick="press('3')">3</div>
+            <div class="key" onclick="press('4')">4</div><div class="key" onclick="press('5')">5</div><div class="key" onclick="press('6')">6</div>
+            <div class="key" onclick="press('7')">7</div><div class="key" onclick="press('8')">8</div><div class="key" onclick="press('9')">9</div>
+            <div class="key" style="color:var(--danger)" onclick="press('C')">C</div><div class="key" onclick="press('0')">0</div><div class="key" style="color:var(--success)" onclick="press('OK')">OK</div>
         </div>
     </div>
 
@@ -65,9 +70,7 @@
                 <button id="tab-drivers" class="tab-btn active" onclick="switchTab('drivers')">Conducteurs</button>
                 <button id="tab-fleet" class="tab-btn" onclick="switchTab('fleet')">Flotte</button>
             </div>
-            
-            <div id="manager-content" style="max-height: 350px; overflow-y: auto;">
-                </div>
+            <div id="manager-content" style="max-height: 350px; overflow-y: auto;"></div>
         </div>
     </div>
 
@@ -88,7 +91,7 @@
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
 
-        let fleetData = {}; // On stocke les objets navettes ici : { id: { history: [], marker: null, polyline: null } }
+        let fleetData = {};
         let currentTab = 'drivers';
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
@@ -107,7 +110,7 @@
 
         hotels.forEach(h => L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [60, 60], iconAnchor: [30, 60] }) }).addTo(map));
 
-        // --- PIN ---
+        // --- PIN LOGIC ---
         function press(k) {
             if (k === 'C') currentPin = "";
             else if (k === 'OK') {
@@ -117,7 +120,7 @@
             document.getElementById('pin-display').innerText = "•".repeat(currentPin.length);
         }
 
-        // --- GESTION CONDUCTEURS & FLOTTE ---
+        // --- GESTION (TABS) ---
         function toggleManager(show) {
             document.getElementById('manager-overlay').style.display = show ? 'flex' : 'none';
             if(show) switchTab(currentTab);
@@ -127,9 +130,7 @@
             currentTab = tab;
             document.getElementById('tab-drivers').className = 'tab-btn' + (tab==='drivers'?' active':'');
             document.getElementById('tab-fleet').className = 'tab-btn' + (tab==='fleet'?' active':'');
-            
-            if(tab === 'drivers') renderDrivers();
-            else renderFleet();
+            if(tab === 'drivers') renderDrivers(); else renderFleet();
         }
 
         async function renderDrivers() {
@@ -143,8 +144,8 @@
         async function renderFleet() {
             const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
             const devices = await res.json();
-            let html = `<p style="font-size:12px; color:#666">Ajoutez les véhicules dans Traccar pour les voir ici.</p>`;
-            devices.forEach(d => html += `<div class="driver-row"><span>🚐 ${d.name} <small>(ID:${d.id})</small></span><span style="color:${d.status==='online'?'green':'red'}">${d.status}</span></div>`);
+            let html = `<p style="font-size:12px; color:#666">Appareils déclarés sur Traccar :</p>`;
+            devices.forEach(d => html += `<div class="driver-row"><span>🚐 ${d.name}</span><span style="color:${d.status==='online'?'green':'red'}">${d.status}</span></div>`);
             document.getElementById('manager-content').innerHTML = html;
         }
 
@@ -156,7 +157,7 @@
             renderDrivers();
         }
 
-        // --- UPDATE GLOBAL ---
+        // --- SUPERVISION (MAIN LOOP) ---
         async function updateAdmin() {
             try {
                 const devRes = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
@@ -164,13 +165,12 @@
                 const list = document.getElementById('shuttle-list');
                 
                 devices.forEach(dev => {
-                    // Initialiser les données de suivi pour chaque nouveau véhicule trouvé
-                    if (!fleetData[dev.id]) fleetData[dev.id] = { history: [], marker: null, polyline: null, color: '#005587' };
+                    if (!fleetData[dev.id]) fleetData[dev.id] = { history: [], marker: null, polyline: null, color: (dev.id % 2 === 0 ? '#2ecc71' : '#e67e22') };
                     
                     const f = fleetData[dev.id];
                     const active = !dev.attributes.hideClient;
                     const driver = dev.attributes.currentDriver || "Libre";
-                    const status = dev.attributes.driverStatus || (active ? "En route" : "Hors service");
+                    const status = dev.attributes.driverStatus || (active ? "En service" : "Hors service");
 
                     let card = document.getElementById(`card-${dev.id}`);
                     if (!card) { card = document.createElement('div'); card.id = `card-${dev.id}`; list.appendChild(card); }
