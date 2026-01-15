@@ -2,172 +2,88 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Test Tracé Haute Précision - 369 Shuttles</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page de Test - Tracé GeoJSON</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-        #map { height: 100vh; width: 100%; background: #e5e3df; }
-        
-        .test-panel {
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        .info-box {
             position: absolute;
-            top: 15px;
-            right: 15px;
+            top: 10px;
+            left: 50px;
             z-index: 1000;
             background: white;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            font-size: 12px;
-            width: 180px;
-        }
-        .test-panel h3 { margin: 0 0 10px 0; font-size: 14px; color: #005587; }
-        .test-panel label { display: block; margin-bottom: 8px; }
-        .test-panel input { width: 100%; margin-top: 4px; }
-        
-        .user-location-dot {
-            width: 14px;
-            height: 14px;
-            background: #2196F3;
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
-        }
-
-        .info-badge {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: #005587;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
 
-    <div class="test-panel">
-        <h3>Design du Circuit</h3>
-        <label>Couleur: <input type="color" id="colorPicker" value="#3388ff"></label>
-        <label>Épaisseur: <input type="range" id="weightPicker" min="1" max="15" value="6"></label>
-        <label>Opacité: <input type="range" id="opacityPicker" min="0" max="10" value="4"></label>
-        <button onclick="resetView()" style="width:100%; margin-top:10px; cursor:pointer; padding: 5px;">Recadrer le circuit</button>
-    </div>
+<div class="info-box">
+    <strong>Tracé : Mon_parcour</strong><br>
+    Source : Import GPX corrigé
+</div>
 
-    <div class="info-badge">MODE TEST : TRACÉ GEOJSON PRÉCIS</div>
+<div id="map"></div>
 
-    <div id="map"></div>
+<script>
+    // 1. Initialisation de la carte
+    const map = L.map('map').setView([45.8574, 6.6204], 15);
 
-    <script>
-        const hotels = [
-            { "name": "Mamie Megève", "coords": [45.8593, 6.6291], "icon": "images/logomamiemegeve.png" },
-            { "name": "Mont d'Arbois", "coords": [45.8538, 6.6317], "icon": "images/logomontdarbois.png" },
-            { "name": "L'Arboisie", "coords": [45.8586, 6.6276], "icon": "images/logolarboisie.png" },
-            { "name": "Village", "coords": [45.8575, 6.6206], "icon": "images/logovillage.png" }
-        ];
+    // 2. Ajout du fond de carte (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-        // Données GéoJSON fournies
-        const circuitData = {
-          "type": "FeatureCollection",
-          "features": [
+    // 3. Les données GeoJSON issues de votre GPX
+    const traceData = {
+        "type": "FeatureCollection",
+        "features": [
             {
-              "type": "Feature",
-              "properties": {},
-              "geometry": {
-                "type": "LineString",
-                "coordinates": [[6.629331546548684,45.85916311124805],[6.629323382138381,45.859025228118924],[6.629307053316751,45.858937096454866],[6.629280518982625,45.8588816587237],[6.629233573621747,45.858837592795055],[6.6290662032049,45.85877078309551],[6.6288804628642595,45.85868975845827],[6.628682475907283,45.85860020477409],[6.628504939563413,45.858536598069634],[6.628421254355004,45.85851243273726],[6.628333486941386,45.858468366516576],[6.628241637322645,45.85842430026045],[6.628072225802754,45.85837028351236],[6.627809687611716,45.85832262311209],[6.627593330731003,45.858282821229665],[6.627432083621443,45.85823164733935],[6.6272701660973325,45.858151891143564],[6.627131371117628,45.858082237617424],[6.62703952149883,45.858049543074856],[6.626937466365831,45.858028220536426],[6.62682724682324,45.85805522908345],[6.626757849333416,45.85811777514178],[6.626719068382869,45.85816894913694],[6.626731314999319,45.858238602555076],[6.626849698952213,45.85833099981116],[6.627123206707239,45.85852432280518],[6.627403592955915,45.85876792225139],[6.627517894703658,45.85885889714669],[6.627599538809875,45.858907227499174],[6.627714894596693,45.85895013288794],[6.627882265014364,45.85898993429268],[6.6279965667621354,45.85903115714578],[6.628070046457168,45.85910223095888],[6.6280782108683525,45.859154825522296],[6.628046550211792,45.85921121023134],[6.628011851467306,45.859258118806],[6.627950618387814,45.85928370528532],[6.62786489207636,45.8592979199903],[6.627730179301864,45.8592794408728],[6.6274158494941275,45.85920268139492],[6.627174999382277,45.859147243928504],[6.627041711241702,45.85910996824572],[6.626921286185734,45.859055952163686],[6.626786573411238,45.85893939096482],[6.626594709762486,45.85874749089862],[6.626478366911726,45.858652251361036],[6.626414732320683,45.85861802810777],[6.626329006009286,45.85860523471675],[6.626241238595668,45.8586137636442],[6.626180005516176,45.85864077190686],[6.626128977950117,45.85867346610178],[6.626106525821115,45.85872890404053],[6.626106525821115,45.858785763407155],[6.626155512284214,45.85885825901585],[6.626233074185308,45.85895207672172],[6.626379579983734,45.85908075774941],[6.626516333860337,45.8592342769347],[6.62663063560899,45.85936647367211],[6.626807124675537,45.85959022131226],[6.626890809883946,45.85969114508521],[6.627021440453262,45.85980344033527],[6.62713573940448,45.85988447893439],[6.627213301305545,45.85994275857345],[6.627276575487201,45.86000103815141],[6.627317397539912,45.860076375076545],[6.627329644156333,45.86015597624453],[6.62735531437113,45.86028572829494],[6.627410424142397,45.86052453055848],[6.627443761338299,45.860762429260205],[6.62744784354345,45.86086192947482]]
-              }
-            },
-            {
-              "type": "Feature",
-              "properties": {},
-              "geometry": {
-                "type": "LineString",
-                "coordinates": [[6.627995259491826,45.85873338019718],[6.627854672684464,45.85871502228508],[6.627689922518812,45.85871502228508],[6.627630612459626,45.858722671415876],[6.6275734990686885,45.85872420124045],[6.627503205665022,45.85869972401915],[6.627432912261327,45.8586630081673],[6.627356028850784,45.858610994001964],[6.62728793211636,45.858569688600795],[6.627243998738351,45.858557449957146],[6.627169311997022,45.858565099109654]]
-              }
-            },
-            {
-              "type": "Feature",
-              "properties": {},
-              "geometry": {
-                "type": "LineString",
-                "coordinates": [[6.620398993006688,45.85744317832132],[6.620631589901819,45.857486915921754],[6.620710672847139,45.85752093403184],[6.620710672847139,45.85755981184664],[6.620710672847139,45.85759382991151],[6.620710672847139,45.85759544981917],[6.620750214318832,45.85762622805021],[6.620813015480394,45.857635947487694],[6.620873490673546,45.857621368330456],[6.620936291835108,45.85761974842356],[6.62100374493545,45.85761488870395],[6.621136325165793,45.857640807206195],[6.621365079106766,45.85768435215431],[6.621611631816279,45.85773456917906],[6.621772123674333,45.857768587137684],[6.6219488973140415,45.85782690358931],[6.622249990774748,45.85794291246805],[6.622440720228809,45.858025527164614],[6.622818450616137,45.85817958677535],[6.622939401002498,45.858221703907844],[6.623160368052709,45.85830269830325],[6.623331931707867,45.85835727123663],[6.623492423565864,45.85839452858241],[6.623666871237219,45.85844150519992],[6.62379014759199,45.858475522725996],[6.623913423946732,45.85853383843627],[6.6240361561610825,45.85862616825395],[6.624217581739657,45.85876709740097],[6.624394355380417,45.858909646059516],[6.624598491705314,45.859077986062886],[6.624754331624558,45.85918165727142],[6.625086464294952,45.859366320753736],[6.625246956152978,45.85945217304126],[6.625402796073217,45.859554223702276],[6.625579612295724,45.859689459399135],[6.6257191704332,45.85980446836959],[6.625837794849161,45.85992109694209],[6.625935485545625,45.86000532853629],[6.626109690116124,45.86013171063553],[6.6262027288737215,45.8601884047774],[6.626342287011312,45.86023376004928],[6.626474867241598,45.860264536819955],[6.626698160261213,45.860330949792825],[6.6268038868127235,45.860378402313785],[6.626917859290899,45.86045939356765],[6.627013224017958,45.86055658291676],[6.6271388263421045,45.860657011732314],[6.6272807104479625,45.86075420073598],[6.627440870106113,45.86086185936324]]
-              }
-            }
-          ]
-        };
-
-        const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-
-        let circuitLayer;
-        let userMarker = null;
-
-        function updateCircuit() {
-            if (circuitLayer) map.removeLayer(circuitLayer);
-            
-            const color = document.getElementById('colorPicker').value;
-            const weight = document.getElementById('weightPicker').value;
-            const opacity = document.getElementById('opacityPicker').value / 10;
-
-            circuitLayer = L.geoJSON(circuitData, {
-                style: { 
-                    color: color, 
-                    weight: weight, 
-                    opacity: opacity, 
-                    lineJoin: 'round',
-                    lineCap: 'round' 
+                "type": "Feature",
+                "properties": { "name": "Mon_parcour" },
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [
+                        [6.6204875634738, 45.85744810138686], [6.620486, 45.857454], [6.620586, 45.857471],
+                        [6.62073, 45.85752], [6.620753, 45.857547], [6.620846, 45.857539], [6.620891, 45.857596],
+                        [6.621083, 45.857636], [6.621388, 45.8577], [6.621847, 45.857797], [6.622367, 45.857997],
+                        [6.622702, 45.858127], [6.623061, 45.858267], [6.623792, 45.858476], [6.624058, 45.858646],
+                        [6.624215, 45.858771], [6.624682, 45.859127], [6.62504, 45.859337], [6.625215, 45.859434],
+                        [6.625538, 45.859661], [6.62596, 45.860033], [6.626033, 45.860099], [6.626277, 45.860222],
+                        [6.626631, 45.860302], [6.626798, 45.860389], [6.627445, 45.860873], [6.627427, 45.86067],
+                        [6.627286, 45.860019], [6.627283, 45.860007], [6.626927, 45.859731], [6.62662, 45.859358],
+                        [6.626164, 45.858875], [6.626102, 45.858762], [6.626108, 45.8587], [6.626152, 45.85865],
+                        [6.626227, 45.858615], [6.626322, 45.858608], [6.626424, 45.858621], [6.626496, 45.858657],
+                        [6.626798, 45.858962], [6.626902, 45.859036], [6.627057, 45.859111], [6.627808, 45.859294],
+                        [6.62788, 45.859297], [6.627934, 45.859283], [6.628035, 45.859235], [6.628076, 45.859149],
+                        [6.628044, 45.859068], [6.627949, 45.859008], [6.627697, 45.85945], [6.627513, 45.858861],
+                        [6.627011, 45.858444], [6.626998, 45.858433], [6.627061, 45.858414], [6.627126, 45.858444],
+                        [6.627405, 45.858654], [6.627556, 45.858745], [6.627732, 45.858799], [6.627851, 45.858811]
+                    ]
                 }
-            }).addTo(map);
-        }
-
-        // Ajout des hôtels
-        hotels.forEach(h => { 
-            L.marker(h.coords, { 
-                icon: L.icon({ 
-                    iconUrl: h.icon, 
-                    iconSize: [80, 80], 
-                    iconAnchor: [40, 80] 
-                }) 
-            }).addTo(map); 
-        });
-
-        // Géolocalisation
-        map.on('locationfound', (e) => {
-            if (!userMarker) {
-                userMarker = L.marker(e.latlng, { 
-                    icon: L.divIcon({ className: 'user-location-dot' }) 
-                }).addTo(map);
-            } else {
-                userMarker.setLatLng(e.latlng);
             }
-        });
+        ]
+    };
 
-        function resetView() {
-            if (circuitLayer) {
-                map.fitBounds(circuitLayer.getBounds(), { padding: [40, 40] });
-            }
+    // 4. Ajout du tracé GeoJSON sur la carte
+    const geojsonLayer = L.geoJSON(traceData, {
+        style: {
+            color: "#3388ff", // Couleur bleue
+            weight: 5,        // Épaisseur du trait
+            opacity: 0.8
         }
+    }).addTo(map);
 
-        // Event Listeners
-        document.getElementById('colorPicker').addEventListener('input', updateCircuit);
-        document.getElementById('weightPicker').addEventListener('input', updateCircuit);
-        document.getElementById('opacityPicker').addEventListener('input', updateCircuit);
+    // 5. Ajustement automatique du zoom sur le tracé
+    map.fitBounds(geojsonLayer.getBounds());
+</script>
 
-        // Initialisation
-        map.locate({watch: true, enableHighAccuracy: true});
-        updateCircuit();
-        
-        // Petit délai pour s'assurer que les couches sont prêtes avant le fitBounds
-        setTimeout(resetView, 500);
-
-    </script>
 </body>
 </html>
