@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Tracé - 369 Shuttles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; background: #e5e3df; }
+        
+        /* Panneau de test pour le style */
+        .test-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 13px;
+        }
+        .info-box {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="test-panel">
+        <strong>🎨 Test du Circuit</strong>
+        <label>Couleur: <input type="color" id="colorPicker" value="#005587"></label>
+        <label>Épaisseur: <input type="range" id="weightPicker" min="1" max="15" value="4"></label>
+        <label>Opacité: <input type="range" id="opacityPicker" min="0" max="10" value="3"></label>
+        <hr>
+        <button onclick="resetView()">Centrer le circuit</button>
+    </div>
+
+    <div class="info-box">Mode Test : Visualisation du tracé GeoJSON</div>
+
+    <div id="map"></div>
+
+    <script>
+        // Initialisation de la carte centrée sur Megève
+        const map = L.map('map', { zoomControl: true }).setView([45.8590, 6.6285], 15);
+        
+        // Fond de carte clair
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Données du circuit
+        const circuitData = {
+            "type": "FeatureCollection",
+            "features": [
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6293,45.8592],[6.6288,45.8586],[6.6275,45.8582],[6.6267,45.8581],[6.6271,45.8595]]}},
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6275,45.8592],[6.6266,45.8587],[6.6261,45.8588],[6.6268,45.8596],[6.6274,45.8608]]}},
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6274,45.8608],[6.6262,45.8603],[6.6255,45.8596],[6.6241,45.8587],[6.6237,45.8584]]}},
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6237,45.8584],[6.6223,45.8580],[6.6209,45.8576],[6.6206,45.8574]]}},
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6315,45.8538],[6.6313,45.8558],[6.6311,45.8576],[6.6312,45.8590]]}},
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6312,45.8590],[6.6306,45.8599],[6.6305,45.8611],[6.6320,45.8638],[6.6336,45.8656]]}},
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6336,45.8656],[6.6322,45.8651],[6.6304,45.8635],[6.6291,45.8621],[6.6274,45.8608]]}}
+            ]
+        };
+
+        // Variable pour stocker la couche du circuit
+        let circuitLayer;
+
+        function drawCircuit() {
+            // Supprimer la couche précédente si elle existe
+            if (circuitLayer) {
+                map.removeLayer(circuitLayer);
+            }
+
+            // Récupérer les valeurs des curseurs
+            const color = document.getElementById('colorPicker').value;
+            const weight = document.getElementById('weightPicker').value;
+            const opacity = document.getElementById('opacityPicker').value / 10;
+
+            // Dessiner le circuit
+            circuitLayer = L.geoJSON(circuitData, {
+                style: {
+                    color: color,
+                    weight: weight,
+                    opacity: opacity,
+                    lineJoin: 'round' // Pour des virages plus fluides
+                }
+            }).addTo(map);
+        }
+
+        function resetView() {
+            map.fitBounds(circuitLayer.getBounds());
+        }
+
+        // Écouteurs d'événements pour mettre à jour en temps réel
+        document.getElementById('colorPicker').addEventListener('input', drawCircuit);
+        document.getElementById('weightPicker').addEventListener('input', drawCircuit);
+        document.getElementById('opacityPicker').addEventListener('input', drawCircuit);
+
+        // Premier rendu
+        drawCircuit();
+        resetView();
+    </script>
+</body>
+</html>
