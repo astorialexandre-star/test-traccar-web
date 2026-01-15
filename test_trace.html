@@ -3,86 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page de Test - Tracé GeoJSON</title>
-    
+    <title>Tracé Nettoyé - Route du Gollet</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; }
+        body { margin: 0; padding: 0; }
         #map { height: 100vh; width: 100%; }
-        .info-box {
-            position: absolute;
-            top: 10px;
-            left: 50px;
-            z-index: 1000;
-            background: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        .label-box {
+            position: absolute; top: 10px; left: 50px; z-index: 1000;
+            background: rgba(255, 255, 255, 0.9); padding: 10px;
+            border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
         }
     </style>
 </head>
 <body>
 
-<div class="info-box">
-    <strong>Tracé : Mon_parcour</strong><br>
-    Source : Import GPX corrigé
+<div class="label-box">
+    <strong>Route du Gollet</strong><br>
+    Tracé unique et nettoyé
 </div>
 
 <div id="map"></div>
 
 <script>
-    // 1. Initialisation de la carte
-    const map = L.map('map').setView([45.8574, 6.6204], 15);
+    const map = L.map('map');
 
-    // 2. Ajout du fond de carte (OpenStreetMap)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+        attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // 3. Les données GeoJSON issues de votre GPX
-    const traceData = {
+    // Données filtrées pour supprimer les sauts incohérents visibles sur l'image
+    const cleanTrace = {
         "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "properties": { "name": "Mon_parcour" },
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [
-                        [6.6204875634738, 45.85744810138686], [6.620486, 45.857454], [6.620586, 45.857471],
-                        [6.62073, 45.85752], [6.620753, 45.857547], [6.620846, 45.857539], [6.620891, 45.857596],
-                        [6.621083, 45.857636], [6.621388, 45.8577], [6.621847, 45.857797], [6.622367, 45.857997],
-                        [6.622702, 45.858127], [6.623061, 45.858267], [6.623792, 45.858476], [6.624058, 45.858646],
-                        [6.624215, 45.858771], [6.624682, 45.859127], [6.62504, 45.859337], [6.625215, 45.859434],
-                        [6.625538, 45.859661], [6.62596, 45.860033], [6.626033, 45.860099], [6.626277, 45.860222],
-                        [6.626631, 45.860302], [6.626798, 45.860389], [6.627445, 45.860873], [6.627427, 45.86067],
-                        [6.627286, 45.860019], [6.627283, 45.860007], [6.626927, 45.859731], [6.62662, 45.859358],
-                        [6.626164, 45.858875], [6.626102, 45.858762], [6.626108, 45.8587], [6.626152, 45.85865],
-                        [6.626227, 45.858615], [6.626322, 45.858608], [6.626424, 45.858621], [6.626496, 45.858657],
-                        [6.626798, 45.858962], [6.626902, 45.859036], [6.627057, 45.859111], [6.627808, 45.859294],
-                        [6.62788, 45.859297], [6.627934, 45.859283], [6.628035, 45.859235], [6.628076, 45.859149],
-                        [6.628044, 45.859068], [6.627949, 45.859008], [6.627697, 45.85945], [6.627513, 45.858861],
-                        [6.627011, 45.858444], [6.626998, 45.858433], [6.627061, 45.858414], [6.627126, 45.858444],
-                        [6.627405, 45.858654], [6.627556, 45.858745], [6.627732, 45.858799], [6.627851, 45.858811]
-                    ]
-                }
+        "features": [{
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [6.62048, 45.85744], [6.62058, 45.85747], [6.62073, 45.85752],
+                    [6.62084, 45.85753], [6.62108, 45.85763], [6.62138, 45.85770],
+                    [6.62184, 45.85779], [6.62236, 45.85799], [6.62270, 45.85812],
+                    [6.62306, 45.85826], [6.62379, 45.85847], [6.62421, 45.85877],
+                    [6.62468, 45.85912], [6.62521, 45.85943], [6.62596, 45.86003],
+                    [6.62627, 45.86022], [6.62679, 45.86038], [6.62744, 45.86087],
+                    [6.62742, 45.86067], [6.62728, 45.86001], [6.62692, 45.85973],
+                    [6.62616, 45.85887], [6.62610, 45.85876], [6.62615, 45.85865],
+                    [6.62632, 45.85860], [6.62649, 45.85865], [6.62690, 45.85903],
+                    [6.62780, 45.85929], [6.62807, 45.85914], [6.62794, 45.85900],
+                    [6.62751, 45.85886], [6.62701, 45.85844], [6.62712, 45.85844],
+                    [6.62755, 45.85874], [6.62785, 45.85881]
+                ]
             }
-        ]
+        }]
     };
 
-    // 4. Ajout du tracé GeoJSON sur la carte
-    const geojsonLayer = L.geoJSON(traceData, {
-        style: {
-            color: "#3388ff", // Couleur bleue
-            weight: 5,        // Épaisseur du trait
-            opacity: 0.8
-        }
+    const layer = L.geoJSON(cleanTrace, {
+        style: { color: "#007bff", weight: 6, opacity: 0.7, lineJoin: 'round' }
     }).addTo(map);
 
-    // 5. Ajustement automatique du zoom sur le tracé
-    map.fitBounds(geojsonLayer.getBounds());
+    map.fitBounds(layer.getBounds(), { padding: [20, 20] });
 </script>
 
 </body>
