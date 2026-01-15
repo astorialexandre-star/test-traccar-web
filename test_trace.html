@@ -2,116 +2,141 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Test Tracé - 369 Shuttles</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Tracé Précis - 369 Shuttles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         #map { height: 100vh; width: 100%; background: #e5e3df; }
         
-        /* Panneau de test pour le style */
+        /* Panneau de réglages */
         .test-panel {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 15px;
+            right: 15px;
             z-index: 1000;
             background: white;
             padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            font-size: 13px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 12px;
+            width: 180px;
         }
-        .info-box {
+        .test-panel h3 { margin: 0 0 10px 0; font-size: 14px; color: #005587; }
+        .test-panel label { display: block; margin-bottom: 8px; }
+        .test-panel input { width: 100%; margin-top: 4px; }
+        
+        .user-location-dot {
+            width: 14px;
+            height: 14px;
+            background: #2196F3;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        .info-badge {
             position: absolute;
             bottom: 20px;
-            left: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 1000;
-            background: rgba(0,0,0,0.7);
+            background: #333;
             color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 12px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 11px;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
     <div class="test-panel">
-        <strong>🎨 Test du Circuit</strong>
-        <label>Couleur: <input type="color" id="colorPicker" value="#005587"></label>
-        <label>Épaisseur: <input type="range" id="weightPicker" min="1" max="15" value="4"></label>
+        <h3>Design du Circuit</h3>
+        <label>Couleur: <input type="color" id="colorPicker" value="#3388ff"></label>
+        <label>Épaisseur: <input type="range" id="weightPicker" min="1" max="15" value="6"></label>
         <label>Opacité: <input type="range" id="opacityPicker" min="0" max="10" value="3"></label>
-        <hr>
-        <button onclick="resetView()">Centrer le circuit</button>
+        <button onclick="resetView()" style="width:100%; margin-top:10px; cursor:pointer;">Recadrer la carte</button>
     </div>
 
-    <div class="info-box">Mode Test : Visualisation du tracé GeoJSON</div>
+    <div class="info-badge">Visualisation des coordonnées GeoJSON précises</div>
 
     <div id="map"></div>
 
     <script>
-        // Initialisation de la carte centrée sur Megève
-        const map = L.map('map', { zoomControl: true }).setView([45.8590, 6.6285], 15);
-        
-        // Fond de carte clair
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        const hotels = [
+            { "name": "Mamie Megève", "coords": [45.8593, 6.6291], "icon": "images/logomamiemegeve.png" },
+            { "name": "Mont d'Arbois", "coords": [45.8538, 6.6317], "icon": "images/logomontdarbois.png" },
+            { "name": "L'Arboisie", "coords": [45.8586, 6.6276], "icon": "images/logolarboisie.png" },
+            { "name": "Village", "coords": [45.8575, 6.6206], "icon": "images/logovillage.png" }
+        ];
 
-        // Données du circuit
+        // Initialisation Carte
+        const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        // Vos nouvelles coordonnées GeoJSON
         const circuitData = {
             "type": "FeatureCollection",
             "features": [
-                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6293,45.8592],[6.6288,45.8586],[6.6275,45.8582],[6.6267,45.8581],[6.6271,45.8595]]}},
-                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6275,45.8592],[6.6266,45.8587],[6.6261,45.8588],[6.6268,45.8596],[6.6274,45.8608]]}},
-                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6274,45.8608],[6.6262,45.8603],[6.6255,45.8596],[6.6241,45.8587],[6.6237,45.8584]]}},
-                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6237,45.8584],[6.6223,45.8580],[6.6209,45.8576],[6.6206,45.8574]]}},
-                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6315,45.8538],[6.6313,45.8558],[6.6311,45.8576],[6.6312,45.8590]]}},
-                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6312,45.8590],[6.6306,45.8599],[6.6305,45.8611],[6.6320,45.8638],[6.6336,45.8656]]}},
-                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.6336,45.8656],[6.6322,45.8651],[6.6304,45.8635],[6.6291,45.8621],[6.6274,45.8608]]}}
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.629327,45.859227],[6.629352,45.859139],[6.629369,45.859059],[6.629361,45.858970],[6.629314,45.858899],[6.629255,45.858843],[6.629153,45.858796],[6.629030,45.858754],[6.628877,45.858692],[6.628690,45.858619],[6.628461,45.858521],[6.628291,45.858447],[6.628192,45.858403],[6.628052,45.858371],[6.627895,45.858341],[6.627708,45.858306],[6.627564,45.858276],[6.627428,45.858238],[6.627330,45.858181],[6.627224,45.858134],[6.627135,45.858081],[6.627004,45.858048],[6.626842,45.858051],[6.626753,45.858102],[6.626707,45.858187],[6.626766,45.858261],[6.626889,45.858353],[6.627059,45.858492],[6.627190,45.859003],[6.628073,45.859151],[6.627551,45.859234]]}},
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.627548,45.859232],[6.626603,45.858758],[6.626159,45.858863],[6.627438,45.860869],[6.623778,45.858472]]}},
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.623778,45.858472],[6.620729,45.857588],[6.620970,45.857613]]}},
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631599,45.853848],[6.631103,45.857644],[6.631296,45.859061]]}},
+                {"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.631295,45.859061],[6.630560,45.861179],[6.633651,45.865602],[6.627438,45.860869]]}}
             ]
         };
 
-        // Variable pour stocker la couche du circuit
         let circuitLayer;
+        let userMarker = null;
 
-        function drawCircuit() {
-            // Supprimer la couche précédente si elle existe
-            if (circuitLayer) {
-                map.removeLayer(circuitLayer);
-            }
-
-            // Récupérer les valeurs des curseurs
+        function updateCircuit() {
+            if (circuitLayer) map.removeLayer(circuitLayer);
+            
             const color = document.getElementById('colorPicker').value;
             const weight = document.getElementById('weightPicker').value;
             const opacity = document.getElementById('opacityPicker').value / 10;
 
-            // Dessiner le circuit
             circuitLayer = L.geoJSON(circuitData, {
-                style: {
-                    color: color,
-                    weight: weight,
-                    opacity: opacity,
-                    lineJoin: 'round' // Pour des virages plus fluides
-                }
+                style: { color: color, weight: weight, opacity: opacity, lineJoin: 'round' }
             }).addTo(map);
         }
 
+        // Ajout des hôtels
+        hotels.forEach(h => { 
+            L.marker(h.coords, { 
+                icon: L.icon({ 
+                    iconUrl: h.icon, 
+                    iconSize: [80, 80], 
+                    iconAnchor: [40, 80] 
+                }) 
+            }).addTo(map); 
+        });
+
+        // Géolocalisation utilisateur
+        map.on('locationfound', (e) => {
+            if (!userMarker) {
+                userMarker = L.marker(e.latlng, { 
+                    icon: L.divIcon({ className: 'user-location-dot' }) 
+                }).addTo(map);
+            } else {
+                userMarker.setLatLng(e.latlng);
+            }
+        });
+
         function resetView() {
-            map.fitBounds(circuitLayer.getBounds());
+            map.fitBounds(circuitLayer.getBounds(), { padding: [50, 50] });
         }
 
-        // Écouteurs d'événements pour mettre à jour en temps réel
-        document.getElementById('colorPicker').addEventListener('input', drawCircuit);
-        document.getElementById('weightPicker').addEventListener('input', drawCircuit);
-        document.getElementById('opacityPicker').addEventListener('input', drawCircuit);
+        // Initialisation
+        map.locate({watch: true, enableHighAccuracy: true});
+        document.getElementById('colorPicker').addEventListener('input', updateCircuit);
+        document.getElementById('weightPicker').addEventListener('input', updateCircuit);
+        document.getElementById('opacityPicker').addEventListener('input', updateCircuit);
 
-        // Premier rendu
-        drawCircuit();
+        updateCircuit();
         resetView();
     </script>
 </body>
