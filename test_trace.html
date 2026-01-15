@@ -135,14 +135,14 @@
         };
 
         // 4. Style et affichage des tracés
-        const geoLayer = L.geoJSON(geojsonData, {
-            style: function(feature) {
-                return {
-                    color: feature.properties.color || "orange",
-                    weight: 4,
-                    opacity: 0.8
-                };
-            },
+const geoLayer = L.geoJSON(geojsonData, {
+    style: function(feature) {
+        return {
+            color: "#0000FF", // <--- CHANGEZ ICI (ex: #0000FF pour bleu, "red" pour rouge)
+            weight: 5,
+            opacity: 0.8
+        };
+    },
             onEachFeature: function (feature, layer) {
                 if (feature.properties && feature.properties.name) {
                     layer.bindPopup(feature.properties.name);
