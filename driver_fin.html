@@ -60,10 +60,21 @@
         input:checked + .slider:before { transform: translateX(40px); }
 
         .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex-grow: 1; margin-bottom: 20px; }
-        .btn { border: none; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; cursor: pointer; }
+        .btn { border: none; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; cursor: pointer; transition: transform 0.2s; }
         
-        /* Nouveau bouton pleine largeur */
         .btn-full { grid-column: span 2; min-height: 60px; font-size: 18px; }
+
+        /* EFFET PULSATION */
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.7); transform: scale(1); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); transform: scale(1.05); }
+            100% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0); transform: scale(1); }
+        }
+        .btn-active { 
+            animation: pulse-animation 1.5s infinite; 
+            border: 3px solid white !important;
+            z-index: 10;
+        }
 
         .btn-logout { background: #444; border: none; color: #bbb; padding: 12px; border-radius: 10px; width: 100%; cursor: pointer; }
 
@@ -103,12 +114,11 @@
     </div>
 
     <div class="button-grid">
-        <button class="btn btn-full" style="background:var(--success)" onclick="sendStatus('En service')">✅ FIN D'ÉVÉNEMENT</button>
-        
-        <button class="btn" style="background:var(--warning); color:black" onclick="sendStatus('Trafic 🚗')">🚗 TRAFIC</button>
-        <button class="btn" style="background:var(--danger)" onclick="sendStatus('Accident ⚠️')">⚠️ ACCIDENT</button>
-        <button class="btn" style="background:var(--primary)" onclick="sendStatus('Plein ⛽')">⛽ PLEIN</button>
-        <button class="btn" style="background:var(--primary)" onclick="sendStatus('Pause ☕')">☕ PAUSE</button>
+        <button id="btn-service" class="btn btn-full" style="background:var(--success)" onclick="sendStatus('En service', this)">✅ FIN D'ÉVÉNEMENT</button>
+        <button id="btn-trafic" class="btn" style="background:var(--warning); color:black" onclick="sendStatus('Trafic 🚗', this)">🚗 TRAFIC</button>
+        <button id="btn-accident" class="btn" style="background:var(--danger)" onclick="sendStatus('Accident ⚠️', this)">⚠️ ACCIDENT</button>
+        <button id="btn-plein" class="btn" style="background:var(--primary)" onclick="sendStatus('Plein ⛽', this)">⛽ PLEIN</button>
+        <button id="btn-pause" class="btn" style="background:var(--primary)" onclick="sendStatus('Pause ☕', this)">☕ PAUSE</button>
     </div>
 
     <button class="btn-logout" onclick="logout()">DÉCONNEXION</button>
@@ -210,6 +220,17 @@
                     toggle.checked = shouldBeVisible;
                     updateUI(shouldBeVisible);
                 }
+                
+                // Gestion de la pulsation lors de la synchro
+                const currentStatus = dev.attributes.driverStatus;
+                document.querySelectorAll('.btn').forEach(btn => {
+                    if (btn.innerText.includes(currentStatus) || (currentStatus === "En service" && btn.id === "btn-service")) {
+                        btn.classList.add('btn-active');
+                    } else {
+                        btn.classList.remove('btn-active');
+                    }
+                });
+
             } catch (e) {}
         }
 
@@ -227,13 +248,19 @@
             setTimeout(() => { isUpdating = false; }, 3000);
         }
 
-        async function sendStatus(label) {
+        async function sendStatus(label, element) {
             isUpdating = true; 
+            
+            // UI : Mise à jour immédiate de la pulsation
+            document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
+            if (element) element.classList.add('btn-active');
+
             try {
                 const res = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
                 const devs = await res.json();
                 const dev = devs[0];
                 dev.attributes.driverStatus = label;
+                
                 if (label.includes('Plein') || label.includes('Pause')) {
                     dev.attributes.hideClient = true;
                     document.getElementById('service-toggle').checked = false;
@@ -243,6 +270,7 @@
                     document.getElementById('service-toggle').checked = true;
                     updateUI(true);
                 }
+                
                 await saveToTraccar(currentDeviceId, dev);
                 showToast(label);
             } catch (e) {}
@@ -253,6 +281,8 @@
             const txt = document.getElementById('status-text');
             txt.innerText = isInService ? "EN SERVICE" : "HORS SERVICE";
             txt.style.color = isInService ? "var(--success)" : "var(--danger)";
+            // Si on passe Hors Service via le switch, on retire les pulsations
+            if(!isInService) document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
         }
 
         async function saveToTraccar(id, deviceData) {
