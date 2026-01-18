@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>TEST Tracking - 369 Shuttles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+        #map { height: 100vh; width: 100%; background: #e5e3df; }
+        
+        .status-header { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 85%; max-width: 400px; text-align: center; }
+        
+        #proximity-alert { position: absolute; top: 125px; left: 50%; transform: translateX(-50%); z-index: 1100; background: #2ecc71; color: white; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: none; border: 2px solid white; white-space: nowrap; }
+
+        .shuttle-switcher { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 5px; background: rgba(255,255,255,0.95); padding: 5px; border-radius: 50px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 90%; overflow-x: auto; }
+        .sw-btn { padding: 8px 15px; border-radius: 40px; border: none; font-size: 11px; font-weight: bold; cursor: pointer; background: transparent; color: #666; white-space: nowrap; }
+        .sw-btn.active { background: #005587; color: white; }
+
+        .navette-container { position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+        .navette-label { background: #005587; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; position: absolute; top: -22px; white-space: nowrap; font-weight: bold; z-index: 10; }
+        .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid #005587; display: flex; align-items: center; justify-content: center; z-index: 5; }
+        .bus-circle img { width: 20px; height: 20px; }
+        
+        .direction-arrow { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            width: 0; 
+            height: 0; 
+            border-top: 6px solid transparent; 
+            border-bottom: 6px solid transparent; 
+            border-left: 10px solid #005587; 
+            margin-top: -6px; 
+            margin-left: 16px; 
+            transform-origin: -16px center; 
+            z-index: 1; 
+        }
+
+        #error-msg { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; z-index: 2000; display: none; text-align: center; border: 2px solid #005587; }
+        .user-dot { width: 14px; height: 14px; background: #2196F3; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+
+        .btn-focus { position: absolute; z-index: 1000; width: 50px; height: 50px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.3s; }
+        .btn-focus.active { background: #005587; }
+        .btn-focus.active img { filter: brightness(0) invert(1); }
+
+        #focus-toggle { bottom: 30px; right: 20px; }
+        #user-toggle { bottom: 90px; right: 20px; }
+        #focus-toggle img { width: 30px; height: auto; }
+        #user-toggle img { width: 32px; height: auto; }
+    </style>
+</head>
+<body>
+    <div id="proximity-alert"></div>
+    <div class="status-header"><b>MODE TEST</b> <span id="current-time">--:--</span></div>
+    <div class="shuttle-switcher" id="switcher"></div>
+    
+    <button class="btn-focus" id="user-toggle" onclick="toggleUserCenter()"><img src="images/user-focus.png"></button>
+    <button class="btn-focus" id="focus-toggle" onclick="toggleAutoCenter()"><img src="images/van.png"></button>
+    
+    <div id="error-msg"><h3>AUCUN APPAREIL TROUVÉ</h3><p>Vérifiez la liaison dans Traccar.</p></div>
+    <div id="map"></div>
+
+    <script>
+        const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
+        // ASSUREZ-VOUS QUE LES IDENTIFIANTS CI-DESSOUS SONT CEUX DU COMPTE "READONLY"
+        const AUTH = 'Basic ' + btoa('readonly@votre_domaine.com:VOTRE_MOT_DE_PASSE');
+        
+        const hotels = [
+            { "name": "Mamie Megève", "coords": [45.8593, 6.6291], "icon": "images/logomamiemegeve.png" },
+            { "name": "Mont d'Arbois", "coords": [45.8538, 6.6317], "icon": "images/logomontdarbois.png" },
+            { "name": "L'Arboisie", "coords": [45.8586, 6.6276], "icon": "images/logolarboisie.png" },
+            { "name": "Village", "coords": [45.8575, 6.6206], "icon": "images/logovillage.png" }
+        ];
+
+        let shuttles = {}; let followId = null; let userMarker = null;
+        let autoCenter = true; let userCenter = false;
+        const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        map.on('dragstart', () => { autoCenter = false; userCenter = false; updateFocusButtons(); });
+
+        function toggleAutoCenter() {
+            autoCenter = !autoCenter;
+            if (autoCenter) userCenter = false;
+            updateFocusButtons();
+            updatePositions();
+        }
+
+        function toggleUserCenter() {
+            userCenter = !userCenter;
+            if (userCenter) autoCenter = false;
+            updateFocusButtons();
+            if (userMarker) map.panTo(userMarker.getLatLng());
+        }
+
+        function updateFocusButtons() {
+            document.getElementById('focus-toggle').className = autoCenter ? 'btn-focus active' : 'btn-focus';
+            document.getElementById('user-toggle').className = userCenter ? 'btn-focus active' : 'btn-focus';
+        }
+
+        fetch('circuit.json')
+            .then(response => response.json())
+            .then(data => { L.geoJSON(data, { style: { color: '#3388ff', weight: 6, opacity: 0.3 } }).addTo(map); })
+            .catch(e => console.error('Erreur circuit:', e));
+
+        hotels.forEach(h => { L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [60, 60], iconAnchor: [30, 60] }) }).addTo(map); });
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        async function updatePositions() {
+            try {
+                const [resDev, resPos] = await Promise.all([
+                    fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
+                    fetch(`${TRACCAR_URL}/api/positions`, { headers: { 'Authorization': AUTH } })
+                ]);
+
+                if (!resDev.ok) throw new Error("Erreur Authentification API");
+
+                const devices = await resDev.json();
+                const positions = await resPos.json();
+
+                // --- MODIFICATION TEST : AUCUN FILTRE ---
+                const activeDevices = devices; 
+                
+                console.log("Appareils détectés pour cet utilisateur:", activeDevices);
+
+                if (!followId && activeDevices.length > 0) followId = activeDevices[0].id;
+
+                let switcherHtml = ""; let alertMsg = null;
+                activeDevices.forEach(dev => {
+                    const pos = positions.find(p => p.deviceId === dev.id);
+                    switcherHtml += `<button class="sw-btn ${followId===dev.id?'active':''}" onclick="followId=${dev.id};updatePositions()">${dev.name.toUpperCase()}</button>`;
+                    
+                    if (pos) {
+                        const latlng = [pos.latitude, pos.longitude];
+                        if (!shuttles[dev.id]) shuttles[dev.id] = L.marker(latlng).addTo(map);
+                        shuttles[dev.id].setLatLng(latlng);
+                        
+                        const rotation = (pos.course || 0) - 90;
+                        const html = `<div class="navette-container"><div class="navette-label">${dev.name}</div><div class="bus-circle"><img src="images/van.png"></div><div class="direction-arrow" style="transform: rotate(${rotation}deg);"></div></div>`;
+                        shuttles[dev.id].setIcon(L.divIcon({ html: html, className: '', iconSize: [40, 40], iconAnchor: [20, 20] }));
+                        
+                        if (followId === dev.id && autoCenter) map.panTo(latlng);
+
+                        hotels.forEach(h => {
+                            const d = getDistance(pos.latitude, pos.longitude, h.coords[0], h.coords[1]);
+                            if (d < 150 && pos.speed > 2) alertMsg = `🚀 ${dev.name} arrive à ${h.name}`;
+                        });
+                    }
+                });
+
+                document.getElementById('switcher').innerHTML = switcherHtml;
+                document.getElementById('proximity-alert').innerText = alertMsg || "";
+                document.getElementById('proximity-alert').style.display = alertMsg ? 'block' : 'none';
+                document.getElementById('error-msg').style.display = activeDevices.length === 0 ? 'block' : 'none';
+                
+            } catch (e) {
+                console.error("DEBUG:", e);
+                document.getElementById('error-msg').innerHTML = "<h3>ERREUR CONNEXION</h3><p>Vérifiez la console (F12)</p>";
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        }
+
+        map.on('locationfound', (e) => {
+            if (!userMarker) userMarker = L.marker(e.latlng, { icon: L.divIcon({ className: 'user-dot' }) }).addTo(map);
+            else userMarker.setLatLng(e.latlng);
+            if (userCenter) map.panTo(e.latlng);
+        });
+        map.locate({watch: true, enableHighAccuracy: true});
+
+        setInterval(updatePositions, 4000);
+        updateFocusButtons();
+        updatePositions();
+        setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 1000);
+    </script>
+</body>
+</html>
