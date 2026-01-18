@@ -1,4 +1,7 @@
 <?php
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 // Configuration du serveur cible
 $traccar_url = "https://shuttles.369degres.com/api/";
 $auth = "Basic " . base64_encode("l.astori@369degres.com:Laur@2026"); // Vos nouveaux identifiants
