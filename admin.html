@@ -83,7 +83,7 @@
         fetch('circuit.json')
             .then(response => response.json())
             .then(data => {
-                L.geoJSON(data, { style: { color: '#005587', weight: 8, opacity: 0.3 } }).addTo(map);
+                L.geoJSON(data, { style: { color: '#5B99EB', weight: 8, opacity: 0.3 } }).addTo(map);
             })
             .catch(error => console.error('Erreur de chargement du circuit Admin:', error));
 
