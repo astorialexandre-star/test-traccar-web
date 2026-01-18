@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>TEST Prod - 369 Shuttles</title>
+    <title>TEST Production via Proxy - 369 Shuttles</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -23,7 +23,7 @@
         
         .direction-arrow { position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 10px solid #005587; margin-top: -6px; margin-left: 16px; transform-origin: -16px center; z-index: 1; }
 
-        #error-msg { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; z-index: 2000; display: none; text-align: center; border: 2px solid #005587; }
+        #error-msg { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; z-index: 2000; display: none; text-align: center; border: 2px solid #005587; box-shadow: 0 0 20px rgba(0,0,0,0.2); }
         .user-dot { width: 14px; height: 14px; background: #2196F3; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
 
         .btn-focus { position: absolute; z-index: 1000; width: 50px; height: 50px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; border: none; }
@@ -37,7 +37,7 @@
     </style>
 </head>
 <body>
-    <div class="status-header"><b>SERVEUR PROD</b> <span id="current-time">--:--</span></div>
+    <div class="status-header"><b>MODE PROXY (PROD)</b> <span id="current-time">--:--</span></div>
     <div class="shuttle-switcher" id="switcher"></div>
     
     <button class="btn-focus" id="user-toggle" onclick="toggleUserCenter()"><img src="images/user-focus.png"></button>
@@ -47,11 +47,7 @@
     <div id="map"></div>
 
     <script>
-        // CONFIGURATION NOUVEAU SERVEUR
-        const BASE_URL = 'https://shuttles.369degres.com/api'; 
-        const USER_EMAIL = 'l.astori@369degres.com';
-        const USER_PASS = 'Laur@2026!';
-
+        // On n'utilise plus d'URL externe ni d'AUTH ici car api.php s'en charge.
         const hotels = [
             { "name": "Mamie Megève", "coords": [45.8593, 6.6291], "icon": "images/logomamiemegeve.png" },
             { "name": "Mont d'Arbois", "coords": [45.8538, 6.6317], "icon": "images/logomontdarbois.png" },
@@ -90,24 +86,20 @@
 
         async function updatePositions() {
             try {
-                // Utilisation des paramètres d'URL pour éviter le Preflight CORS bloquant
-                const urlSuffix = `?email=${encodeURIComponent(USER_EMAIL)}&password=${encodeURIComponent(USER_PASS)}`;
-                
+                // APPEL AU PROXY LOCAL
                 const [resDev, resPos] = await Promise.all([
-                    fetch(`${BASE_URL}/devices${urlSuffix}`),
-                    fetch(`${BASE_URL}/positions${urlSuffix}`)
+                    fetch(`api.php?endpoint=devices`),
+                    fetch(`api.php?endpoint=positions`)
                 ]);
 
-                if (!resDev.ok || !resPos.ok) {
-                    throw new Error(`Erreur serveur: ${resDev.status}`);
-                }
+                if (!resDev.ok || !resPos.ok) throw new Error("Erreur de réponse du Proxy PHP");
 
                 const devices = await resDev.json();
                 const positions = await resPos.json();
 
-                // TEST : Affichage sans filtre hideClient
+                // Test sans filtre hideClient pour la mise en place
                 const activeDevices = devices; 
-                console.log("Appareils trouvés:", activeDevices.length);
+                console.log("Appareils reçus via api.php:", activeDevices.length);
 
                 if (!followId && activeDevices.length > 0) followId = activeDevices[0].id;
 
@@ -131,12 +123,12 @@
 
                 document.getElementById('switcher').innerHTML = switcherHtml;
                 document.getElementById('error-msg').style.display = activeDevices.length === 0 ? 'block' : 'none';
-                if(activeDevices.length === 0) document.getElementById('error-msg').innerHTML = "<h3>AUCUN APPAREIL</h3><p>Vérifiez les liaisons sur le nouveau serveur.</p>";
+                if(activeDevices.length === 0) document.getElementById('error-msg').innerHTML = "<h3>AUCUNE NAVETTE</h3><p>Vérifiez les liaisons de l'utilisateur sur le serveur de prod.</p>";
 
             } catch (e) {
                 console.error("Erreur API:", e);
                 document.getElementById('error-msg').style.display = 'block';
-                document.getElementById('error-msg').innerHTML = "<h3>ERREUR CORS / AUTH</h3><p>Le serveur refuse la connexion directe.</p>";
+                document.getElementById('error-msg').innerHTML = "<h3>ERREUR PROXY</h3><p>Le fichier api.php est introuvable ou mal configuré.</p>";
             }
         }
 
