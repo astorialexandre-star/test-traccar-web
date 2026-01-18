@@ -79,26 +79,13 @@
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // --- TRACÉ DU CIRCUIT ---
-        const circuitData = {
-            "type":"FeatureCollection",
-            "features":[{
-                "type":"Feature",
-                "geometry":{
-                    "type":"MultiLineString",
-                    "coordinates":[
-                        [[6.6293,45.8592],[6.6288,45.8586],[6.6275,45.8582],[6.6267,45.8581],[6.6271,45.8595]],
-                        [[6.6275,45.8592],[6.6266,45.8587],[6.6261,45.8588],[6.6268,45.8596],[6.6274,45.8608]],
-                        [[6.6274,45.8608],[6.6262,45.8603],[6.6255,45.8596],[6.6241,45.8587],[6.6237,45.8584]],
-                        [[6.6237,45.8584],[6.6223,45.8580],[6.6209,45.8576],[6.6206,45.8574]],
-                        [[6.6315,45.8538],[6.6313,45.8558],[6.6311,45.8576],[6.6312,45.8590]],
-                        [[6.6312,45.8590],[6.6306,45.8599],[6.6305,45.8611],[6.6320,45.8638],[6.6336,45.8656]],
-                        [[6.6336,45.8656],[6.6322,45.8651],[6.6304,45.8635],[6.6291,45.8621],[6.6274,45.8608]]
-                    ]
-                }
-            }]
-        };
-        L.geoJSON(circuitData, { style: { color: '#005587', weight: 4, opacity: 0.3 } }).addTo(map);
+        // --- CHARGEMENT DU CIRCUIT DEPUIS LE FICHIER EXTERNE ---
+        fetch('circuit.json')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, { style: { color: '#005587', weight: 4, opacity: 0.3 } }).addTo(map);
+            })
+            .catch(error => console.error('Erreur de chargement du circuit Admin:', error));
 
         const hotels = [
             { name: "Mamie Megève", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
