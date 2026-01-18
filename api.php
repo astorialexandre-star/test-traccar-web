@@ -1,7 +1,7 @@
 <?php
 // Configuration du serveur cible
 $traccar_url = "https://shuttles.369degres.com/api/";
-$auth = "Basic " . base64_encode("l.astori@369degres.com:Laur@2026!"); // Vos nouveaux identifiants
+$auth = "Basic " . base64_encode("l.astori@369degres.com:Laur@2026"); // Vos nouveaux identifiants
 
 $endpoint = $_GET['endpoint'];
 $url = $traccar_url . $endpoint;
