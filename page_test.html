@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>369 Shuttles - GitHub Prod</title>
+    <title>369 Shuttles - GitHub Fix</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -17,19 +17,20 @@
         .navette-label { background: #005587; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; position: absolute; top: -22px; white-space: nowrap; font-weight: bold; z-index: 10; }
         .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid #005587; display: flex; align-items: center; justify-content: center; z-index: 5; }
         .bus-circle img { width: 20px; height: 20px; }
-        #error-msg { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; z-index: 2000; display: none; text-align: center; border: 2px solid #005587; }
+        #error-msg { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 15px; z-index: 2000; display: none; text-align: center; border: 2px solid #005587; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .btn-blue { background: #005587; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="status-header"><b>369 SHUTTLES - GITHUB</b> <span id="current-time">--:--</span></div>
+    <div class="status-header"><b>NAVETTES LIVE</b> <span id="current-time">--:--</span></div>
     <div class="shuttle-switcher" id="switcher"></div>
     <div id="error-msg"></div>
     <div id="map"></div>
 
     <script>
-        // CONFIGURATION
+        // CONFIGURATION GITHUB -> TRACCAR
         const TRACCAR_URL = "https://shuttles.369degres.com/api";
-        const PROXY_URL = "https://cors-anywhere.herokuapp.com/"; // Proxy temporaire
+        const PROXY = "https://cors-anywhere.herokuapp.com/"; 
         const EMAIL = "l.astori@369degres.com";
         const PASS = "Laur@2026";
 
@@ -39,31 +40,29 @@
 
         async function updatePositions() {
             try {
-                // On utilise le proxy pour contourner le blocage GitHub -> Traccar
-                const authParam = `?email=${encodeURIComponent(EMAIL)}&password=${encodeURIComponent(PASS)}`;
-                const headers = { "X-Requested-With": "XMLHttpRequest" };
+                const auth = btoa(`${EMAIL}:${PASS}`);
+                const headers = { "Authorization": `Basic ${auth}`, "X-Requested-With": "XMLHttpRequest" };
 
+                // On passe par le PROXY pour GitHub
                 const [resDev, resPos] = await Promise.all([
-                    fetch(`${PROXY_URL}${TRACCAR_URL}/devices${authParam}`, { headers }),
-                    fetch(`${PROXY_URL}${TRACCAR_URL}/positions${authParam}`, { headers })
+                    fetch(`${PROXY}${TRACCAR_URL}/devices`, { headers }),
+                    fetch(`${PROXY}${TRACCAR_URL}/positions`, { headers })
                 ]);
 
                 if (resDev.status === 403) {
                     document.getElementById('error-msg').style.display = 'block';
-                    document.getElementById('error-msg').innerHTML = "<h3>ACCÈS PROXY REQUIS</h3><p>Allez sur <a href='https://cors-anywhere.herokuapp.com/corsdemo' target='_blank'>ce lien</a> et cliquez sur le bouton bleu pour activer le test.</p>";
+                    document.getElementById('error-msg').innerHTML = `
+                        <h3>ACTIVER LE FLUX</h3>
+                        <p>GitHub a besoin d'une autorisation temporaire.</p>
+                        <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" class="btn-blue">CLIQUER ICI PUIS SUR LE BOUTON BLEU</a>
+                        <p style="font-size:10px; margin-top:10px;">Revenez ici après avoir cliqué.</p>`;
                     return;
                 }
 
                 const devices = await resDev.json();
                 const positions = await resPos.json();
 
-                if (devices.length === 0) {
-                    document.getElementById('error-msg').style.display = 'block';
-                    document.getElementById('error-msg').innerHTML = "<h3>AUCUN APPAREIL</h3><p>Vérifiez les liaisons Traccar.</p>";
-                    return;
-                }
-
-                if (!followId) followId = devices[0].id;
+                if (!followId && devices.length > 0) followId = devices[0].id;
 
                 let switcherHtml = "";
                 devices.forEach(dev => {
@@ -85,12 +84,10 @@
 
             } catch (e) {
                 console.error(e);
-                document.getElementById('error-msg').style.display = 'block';
-                document.getElementById('error-msg').innerHTML = "<h3>ERREUR LIAISON</h3><p>Impossible de joindre le serveur Traccar depuis GitHub.</p>";
             }
         }
 
-        setInterval(updatePositions, 4000);
+        setInterval(updatePositions, 5000);
         updatePositions();
         setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 1000);
     </script>
