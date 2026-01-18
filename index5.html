@@ -43,12 +43,16 @@
 
         .btn-focus { position: absolute; z-index: 1000; width: 50px; height: 50px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.3s; }
         .btn-focus.active { background: #005587; }
-        .btn-focus img { width: 25px; height: 25px; }
+        
         .btn-focus.active img { filter: brightness(0) invert(1); }
 
         /* Positionnement spécifique des boutons */
         #focus-toggle { bottom: 30px; right: 20px; }
         #user-toggle { bottom: 90px; right: 20px; }
+
+        /* Tailles personnalisées des icônes */
+        #focus-toggle img { width: 30px; height: auto; }
+        #user-toggle img { width: 32px; height: auto; }
     </style>
 </head>
 <body>
@@ -74,7 +78,7 @@
 
         let shuttles = {}; let followId = null; let userMarker = null;
         let autoCenter = true; 
-        let userCenter = false; // Suivi utilisateur désactivé par défaut
+        let userCenter = false; 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
@@ -86,14 +90,14 @@
 
         function toggleAutoCenter() {
             autoCenter = !autoCenter;
-            if (autoCenter) userCenter = false; // Désactive l'un si l'autre est activé
+            if (autoCenter) userCenter = false; 
             updateFocusButtons();
             updatePositions();
         }
 
         function toggleUserCenter() {
             userCenter = !userCenter;
-            if (userCenter) autoCenter = false; // Désactive l'un si l'autre est activé
+            if (userCenter) autoCenter = false; 
             updateFocusButtons();
             if (userMarker) map.panTo(userMarker.getLatLng());
         }
