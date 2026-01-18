@@ -60,19 +60,19 @@
         input:checked + .slider:before { transform: translateX(40px); }
 
         .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex-grow: 1; margin-bottom: 20px; }
-        .btn { border: none; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; cursor: pointer; transition: all 0.3s ease; border: 3px solid transparent; }
+        .btn { border: none; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; cursor: pointer; transition: all 0.3s ease; border: 3px solid transparent; position: relative; }
         
         .btn-full { grid-column: span 2; min-height: 60px; font-size: 18px; }
 
-        /* EFFET PULSATION */
-        @keyframes pulse-animation {
-            0% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.6); transform: scale(1); }
-            70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); transform: scale(1.03); }
+        /* EFFET PULSATION CORRIGÉ */
+        @keyframes pulse-white {
+            0% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.7); transform: scale(1); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); transform: scale(1.04); }
             100% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0); transform: scale(1); }
         }
         
         .btn-active { 
-            animation: pulse-animation 1.5s infinite; 
+            animation: pulse-white 1.5s infinite !important; 
             border: 3px solid white !important;
             z-index: 10;
         }
@@ -116,7 +116,6 @@
 
     <div class="button-grid">
         <button id="btn-service" class="btn btn-full" style="background:var(--success)" onclick="sendStatus('En service', this)">✅ FIN D'ÉVÉNEMENT</button>
-        
         <button id="btn-trafic" class="btn" style="background:var(--warning); color:black" onclick="sendStatus('Trafic 🚗', this)">🚗 TRAFIC</button>
         <button id="btn-accident" class="btn" style="background:var(--danger)" onclick="sendStatus('Accident ⚠️', this)">⚠️ ACCIDENT</button>
         <button id="btn-plein" class="btn" style="background:var(--primary)" onclick="sendStatus('Plein ⛽', this)">⛽ PLEIN</button>
@@ -218,23 +217,31 @@
                 const dev = devs[0];
                 const shouldBeVisible = !dev.attributes.hideClient;
                 const toggle = document.getElementById('service-toggle');
+                
                 if (toggle.checked !== shouldBeVisible) {
                     toggle.checked = shouldBeVisible;
                     updateUI(shouldBeVisible);
                 }
                 
-                // Gestion persistante de la pulsation
-                const currentStatus = dev.attributes.driverStatus;
+                // GESTION DE LA PULSATION PERSISTANTE
+                const currentStatus = dev.attributes.driverStatus || "";
+                
                 document.querySelectorAll('.btn').forEach(btn => {
-                    // On retire la pulsation partout par défaut
-                    btn.classList.remove('btn-active');
-                    
-                    // On n'applique JAMAIS de pulsation au bouton "service" (Fin d'évènement)
-                    if (btn.id === 'btn-service') return;
+                    // 1. On n'applique jamais au bouton de service
+                    if (btn.id === 'btn-service') {
+                        btn.classList.remove('btn-active');
+                        return;
+                    }
 
-                    // Si le bouton correspond au statut serveur, on fait pulser
-                    if (btn.innerText.includes(currentStatus)) {
+                    // 2. Si le bouton contient le nom du statut (ex: "Trafic" est dans "Trafic 🚗")
+                    // On utilise .includes() pour ignorer les emojis ou espaces en trop
+                    const btnLabel = btn.innerText.replace(/[^\w]/g, '').toLowerCase();
+                    const statusKey = currentStatus.replace(/[^\w]/g, '').toLowerCase();
+
+                    if (statusKey !== "" && statusKey !== "enservice" && statusKey !== "horsservice" && btnLabel.includes(statusKey)) {
                         btn.classList.add('btn-active');
+                    } else {
+                        btn.classList.remove('btn-active');
                     }
                 });
 
@@ -258,10 +265,10 @@
         async function sendStatus(label, element) {
             isUpdating = true; 
             
-            // UI : On nettoie toutes les pulsations d'abord
+            // UI : Nettoyage immédiat
             document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
             
-            // On n'active la pulsation que si ce n'est pas le bouton de service
+            // Activation immédiate sauf si Fin d'événement
             if (element && element.id !== 'btn-service') {
                 element.classList.add('btn-active');
             }
@@ -285,7 +292,8 @@
                 await saveToTraccar(currentDeviceId, dev);
                 showToast(label);
             } catch (e) {}
-            setTimeout(() => { isUpdating = false; }, 3000);
+            // On laisse le temps au serveur de digérer l'info avant de reprendre la synchro
+            setTimeout(() => { isUpdating = false; }, 4000);
         }
 
         function updateUI(isInService) {
@@ -293,9 +301,9 @@
             txt.innerText = isInService ? "EN SERVICE" : "HORS SERVICE";
             txt.style.color = isInService ? "var(--success)" : "var(--danger)";
             
-            // Si on force "Hors service" via le switch, on arrête toute pulsation
-            if(!isInService) {
-                document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
+            // Si on repasse en service via le switch sans bouton, on nettoie les pulses
+            if(isInService && document.getElementById('status-text').innerText === "EN SERVICE") {
+                // On laisse la synchro s'en occuper
             }
         }
 
