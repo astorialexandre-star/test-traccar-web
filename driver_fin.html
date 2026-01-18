@@ -60,16 +60,17 @@
         input:checked + .slider:before { transform: translateX(40px); }
 
         .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex-grow: 1; margin-bottom: 20px; }
-        .btn { border: none; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; cursor: pointer; transition: transform 0.2s; }
+        .btn { border: none; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; cursor: pointer; transition: all 0.3s ease; border: 3px solid transparent; }
         
         .btn-full { grid-column: span 2; min-height: 60px; font-size: 18px; }
 
         /* EFFET PULSATION */
         @keyframes pulse-animation {
-            0% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.7); transform: scale(1); }
-            70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); transform: scale(1.05); }
+            0% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.6); transform: scale(1); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); transform: scale(1.03); }
             100% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0); transform: scale(1); }
         }
+        
         .btn-active { 
             animation: pulse-animation 1.5s infinite; 
             border: 3px solid white !important;
@@ -115,6 +116,7 @@
 
     <div class="button-grid">
         <button id="btn-service" class="btn btn-full" style="background:var(--success)" onclick="sendStatus('En service', this)">✅ FIN D'ÉVÉNEMENT</button>
+        
         <button id="btn-trafic" class="btn" style="background:var(--warning); color:black" onclick="sendStatus('Trafic 🚗', this)">🚗 TRAFIC</button>
         <button id="btn-accident" class="btn" style="background:var(--danger)" onclick="sendStatus('Accident ⚠️', this)">⚠️ ACCIDENT</button>
         <button id="btn-plein" class="btn" style="background:var(--primary)" onclick="sendStatus('Plein ⛽', this)">⛽ PLEIN</button>
@@ -221,13 +223,18 @@
                     updateUI(shouldBeVisible);
                 }
                 
-                // Gestion de la pulsation lors de la synchro
+                // Gestion persistante de la pulsation
                 const currentStatus = dev.attributes.driverStatus;
                 document.querySelectorAll('.btn').forEach(btn => {
-                    if (btn.innerText.includes(currentStatus) || (currentStatus === "En service" && btn.id === "btn-service")) {
+                    // On retire la pulsation partout par défaut
+                    btn.classList.remove('btn-active');
+                    
+                    // On n'applique JAMAIS de pulsation au bouton "service" (Fin d'évènement)
+                    if (btn.id === 'btn-service') return;
+
+                    // Si le bouton correspond au statut serveur, on fait pulser
+                    if (btn.innerText.includes(currentStatus)) {
                         btn.classList.add('btn-active');
-                    } else {
-                        btn.classList.remove('btn-active');
                     }
                 });
 
@@ -251,9 +258,13 @@
         async function sendStatus(label, element) {
             isUpdating = true; 
             
-            // UI : Mise à jour immédiate de la pulsation
+            // UI : On nettoie toutes les pulsations d'abord
             document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
-            if (element) element.classList.add('btn-active');
+            
+            // On n'active la pulsation que si ce n'est pas le bouton de service
+            if (element && element.id !== 'btn-service') {
+                element.classList.add('btn-active');
+            }
 
             try {
                 const res = await fetch(`${TRACCAR_URL}/api/devices?id=${currentDeviceId}`, { headers: { 'Authorization': AUTH } });
@@ -281,8 +292,11 @@
             const txt = document.getElementById('status-text');
             txt.innerText = isInService ? "EN SERVICE" : "HORS SERVICE";
             txt.style.color = isInService ? "var(--success)" : "var(--danger)";
-            // Si on passe Hors Service via le switch, on retire les pulsations
-            if(!isInService) document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
+            
+            // Si on force "Hors service" via le switch, on arrête toute pulsation
+            if(!isInService) {
+                document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
+            }
         }
 
         async function saveToTraccar(id, deviceData) {
