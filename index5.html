@@ -40,12 +40,19 @@
 
         #error-msg { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; z-index: 2000; display: none; text-align: center; border: 2px solid #005587; }
         .user-dot { width: 12px; height: 12px; background: #2196F3; border: 2px solid white; border-radius: 50%; }
+
+        /* Style bouton Focus */
+        .btn-focus { position: absolute; bottom: 30px; right: 20px; z-index: 1000; width: 50px; height: 50px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.3s; }
+        .btn-focus.active { background: #005587; }
+        .btn-focus img { width: 25px; height: 25px; }
+        .btn-focus.active img { filter: brightness(0) invert(1); }
     </style>
 </head>
 <body>
     <div id="proximity-alert"></div>
     <div class="status-header"><b>DIRECT</b> <span id="current-time">--:--</span></div>
     <div class="shuttle-switcher" id="switcher"></div>
+    <button class="btn-focus" id="focus-toggle" onclick="toggleAutoCenter()"><img src="images/focus.png"></button>
     <div id="error-msg"><h3>SERVICES TERMINÉS</h3><p>Aucune navette en service.</p></div>
     <div id="map"></div>
 
@@ -60,10 +67,23 @@
         ];
 
         let shuttles = {}; let followId = null; let userMarker = null;
+        let autoCenter = true; // État du focus par défaut
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // --- CHARGEMENT DU CIRCUIT DEPUIS LE FICHIER EXTERNE ---
+        // Désactiver l'auto-centrage si l'utilisateur déplace la carte manuellement
+        map.on('dragstart', () => { autoCenter = false; updateFocusButton(); });
+
+        function toggleAutoCenter() {
+            autoCenter = !autoCenter;
+            updateFocusButton();
+            updatePositions();
+        }
+
+        function updateFocusButton() {
+            document.getElementById('focus-toggle').className = autoCenter ? 'btn-focus active' : 'btn-focus';
+        }
+
         fetch('circuit.json')
             .then(response => response.json())
             .then(data => {
@@ -114,7 +134,8 @@
 
                         shuttles[dev.id].setIcon(L.divIcon({ html: html, className: '', iconSize: [40, 40], iconAnchor: [20, 20] }));
                         
-                        if (followId === dev.id) map.panTo(latlng);
+                        // Centrage si actif pour la navette sélectionnée
+                        if (followId === dev.id && autoCenter) map.panTo(latlng);
 
                         hotels.forEach(h => {
                             const d = getDistance(pos.latitude, pos.longitude, h.coords[0], h.coords[1]);
@@ -137,6 +158,7 @@
         map.locate({watch: true});
 
         setInterval(updatePositions, 4000);
+        updateFocusButton(); // Initialisation bouton
         updatePositions();
         setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 1000);
     </script>
