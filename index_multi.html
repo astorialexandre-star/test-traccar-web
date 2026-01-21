@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Navettes - 369 Shuttles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        #map { flex-grow: 1; width: 100%; }
+        
+        /* Interface de sélection */
+        .controls-container {
+            position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1000;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .selector-box {
+            background: white; padding: 10px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #ddd;
+        }
+        select {
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc;
+            font-size: 14px; outline: none; background: #f9f9f9;
+        }
+        .shuttle-select-container { display: none; } /* Caché par défaut */
+        
+        .loading-bar { height: 3px; background: #005587; width: 0%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+
+    <div class="controls-container">
+        <div class="selector-box">
+            <select id="line-select" onchange="handleLineChange()">
+                <option value="">--- Choisir ma ligne ---</option>
+                <option value="1">Ligne 1 : Le Village</option>
+                <option value="2">Ligne 2 : Mont d'Arbois</option>
+                <option value="3">Ligne 3 : Côte 2000</option>
+            </select>
+        </div>
+        
+        <div id="shuttle-box" class="selector-box shuttle-select-container">
+            <select id="shuttle-select" onchange="handleShuttleFocus()">
+                <option value="">Navettes en approche...</option>
+            </select>
+        </div>
+        <div id="loader" class="loading-bar"></div>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        const TRACCAR_URL = 'https://369shuttles.duckdns.org';
+        const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
+        
+        const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        let fleetMarkers = {};
+        let selectedLineId = null;
+        let focusedShuttleId = null;
+        let allDevices = [];
+
+        // Tracé du circuit (exemple simplifié)
+        fetch('circuit.json').then(r => r.json()).then(data => {
+            L.geoJSON(data, { style: { color: '#005587', weight: 5, opacity: 0.2 } }).addTo(map);
+        });
+
+        // 1. Changement de ligne
+        function handleLineChange() {
+            selectedLineId = document.getElementById('line-select').value;
+            focusedShuttleId = null; // Reset focus
+            
+            const shuttleBox = document.getElementById('shuttle-box');
+            if (selectedLineId) {
+                shuttleBox.style.display = 'block';
+                updateShuttleList();
+            } else {
+                shuttleBox.style.display = 'none';
+            }
+            updateMap();
+        }
+
+        // 2. Focus sur une navette spécifique
+        function handleShuttleFocus() {
+            focusedShuttleId = document.getElementById('shuttle-select').value;
+        }
+
+        // Mise à jour de la liste des navettes selon la ligne
+        function updateShuttleList() {
+            const select = document.getElementById('shuttle-select');
+            select.innerHTML = '<option value="">Centrer sur une navette...</option>';
+            
+            allDevices.filter(d => d.groupId == selectedLineId && !d.attributes.hideClient).forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.text = d.name;
+                if(d.id == focusedShuttleId) opt.selected = true;
+                select.add(opt);
+            });
+        }
+
+        async function updateMap() {
+            try {
+                const [resDev, resPos] = await Promise.all([
+                    fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
+                    fetch(`${TRACCAR_URL}/api/positions`, { headers: { 'Authorization': AUTH } })
+                ]);
+                allDevices = await resDev.json();
+                const positions = await resPos.json();
+
+                // On filtre les navettes à afficher :
+                // Doit être en ligne (hideClient: false) ET appartenir à la ligne sélectionnée (si une ligne est choisie)
+                allDevices.forEach(dev => {
+                    const pos = positions.find(p => p.deviceId === dev.id);
+                    const isVisibleOnLine = !selectedLineId || dev.groupId == selectedLineId;
+                    const isPublic = !dev.attributes.hideClient;
+
+                    if (pos && isVisibleOnLine && isPublic) {
+                        if (!fleetMarkers[dev.id]) {
+                            fleetMarkers[dev.id] = L.marker([pos.latitude, pos.longitude]).addTo(map);
+                        }
+                        
+                        fleetMarkers[dev.id].setLatLng([pos.latitude, pos.longitude]);
+                        fleetMarkers[dev.id].setIcon(L.divIcon({
+                            html: `<div style="width:40px;height:40px;background:white;border:3px solid #005587;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2)"><img src="images/van.png" style="width:25px;"></div>`,
+                            className: '', iconSize:[40,40], iconAnchor:[20,20]
+                        }));
+
+                        // Centrage automatique si focus activé
+                        if (dev.id == focusedShuttleId) {
+                            map.panTo([pos.latitude, pos.longitude]);
+                        }
+                    } else {
+                        // Supprimer le marqueur si la navette ne correspond plus aux critères
+                        if (fleetMarkers[dev.id]) {
+                            map.removeLayer(fleetMarkers[dev.id]);
+                            delete fleetMarkers[dev.id];
+                        }
+                    }
+                });
+
+                if(selectedLineId) updateShuttleList();
+
+            } catch (e) { console.error(e); }
+        }
+
+        setInterval(updateMap, 4000);
+        updateMap();
+    </script>
+</body>
+</html>
