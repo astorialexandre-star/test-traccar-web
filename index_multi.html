@@ -7,47 +7,54 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; }
-        #map { flex-grow: 1; width: 100%; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; background: #f4f4f4; }
+        #map { width: 100%; height: 100%; z-index: 1; }
         
-        /* Interface de sélection */
-        .controls-container {
-            position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1000;
-            display: flex; flex-direction: column; gap: 8px;
+        /* Sélecteur de Ligne Unique et Discret */
+        .header-ui {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; width: 90%; max-width: 400px;
         }
-        .selector-box {
-            background: white; padding: 10px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #ddd;
+        .line-picker {
+            background: white; padding: 5px; border-radius: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1);
         }
         select {
-            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc;
-            font-size: 14px; outline: none; background: #f9f9f9;
+            width: 100%; border: none; background: transparent; padding: 10px 15px;
+            font-size: 15px; font-weight: 600; color: #005587; outline: none; appearance: none;
+            text-align: center; cursor: pointer;
         }
-        .shuttle-select-container { display: none; } /* Caché par défaut */
-        
-        .loading-bar { height: 3px; background: #005587; width: 0%; transition: width 0.3s; }
+
+        /* Animation pour la navette sélectionnée */
+        .shuttle-icon { transition: all 0.3s ease; }
+        .focused-shuttle {
+            border: 3px solid #2ecc71 !important; /* Vert pour indiquer le suivi */
+            box-shadow: 0 0 15px rgba(46, 204, 113, 0.6) !important;
+            transform: scale(1.2);
+        }
+
+        .info-toast {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); color: white; padding: 8px 15px;
+            border-radius: 20px; font-size: 12px; z-index: 1000; pointer-events: none;
+            display: none;
+        }
     </style>
 </head>
 <body>
 
-    <div class="controls-container">
-        <div class="selector-box">
+    <div class="header-ui">
+        <div class="line-picker">
             <select id="line-select" onchange="handleLineChange()">
-                <option value="">--- Choisir ma ligne ---</option>
+                <option value="">📍 Afficher toutes les navettes</option>
                 <option value="1">Ligne 1 : Le Village</option>
                 <option value="2">Ligne 2 : Mont d'Arbois</option>
                 <option value="3">Ligne 3 : Côte 2000</option>
             </select>
         </div>
-        
-        <div id="shuttle-box" class="selector-box shuttle-select-container">
-            <select id="shuttle-select" onchange="handleShuttleFocus()">
-                <option value="">Navettes en approche...</option>
-            </select>
-        </div>
-        <div id="loader" class="loading-bar"></div>
     </div>
 
+    <div id="status-toast" class="info-toast">Suivi automatique activé</div>
     <div id="map"></div>
 
     <script>
@@ -60,45 +67,16 @@
         let fleetMarkers = {};
         let selectedLineId = null;
         let focusedShuttleId = null;
-        let allDevices = [];
+        let isUserDragging = false;
 
-        // Tracé du circuit (exemple simplifié)
-        fetch('circuit.json').then(r => r.json()).then(data => {
-            L.geoJSON(data, { style: { color: '#005587', weight: 5, opacity: 0.2 } }).addTo(map);
-        });
+        // Détection du mouvement manuel pour stopper le focus
+        map.on('movestart', () => { if(!isInternalMove) focusedShuttleId = null; document.getElementById('status-toast').style.display='none'; });
+        let isInternalMove = false;
 
-        // 1. Changement de ligne
         function handleLineChange() {
             selectedLineId = document.getElementById('line-select').value;
-            focusedShuttleId = null; // Reset focus
-            
-            const shuttleBox = document.getElementById('shuttle-box');
-            if (selectedLineId) {
-                shuttleBox.style.display = 'block';
-                updateShuttleList();
-            } else {
-                shuttleBox.style.display = 'none';
-            }
+            focusedShuttleId = null;
             updateMap();
-        }
-
-        // 2. Focus sur une navette spécifique
-        function handleShuttleFocus() {
-            focusedShuttleId = document.getElementById('shuttle-select').value;
-        }
-
-        // Mise à jour de la liste des navettes selon la ligne
-        function updateShuttleList() {
-            const select = document.getElementById('shuttle-select');
-            select.innerHTML = '<option value="">Centrer sur une navette...</option>';
-            
-            allDevices.filter(d => d.groupId == selectedLineId && !d.attributes.hideClient).forEach(d => {
-                const opt = document.createElement('option');
-                opt.value = d.id;
-                opt.text = d.name;
-                if(d.id == focusedShuttleId) opt.selected = true;
-                select.add(opt);
-            });
         }
 
         async function updateMap() {
@@ -107,44 +85,56 @@
                     fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
                     fetch(`${TRACCAR_URL}/api/positions`, { headers: { 'Authorization': AUTH } })
                 ]);
-                allDevices = await resDev.json();
+                const devices = await resDev.json();
                 const positions = await resPos.json();
 
-                // On filtre les navettes à afficher :
-                // Doit être en ligne (hideClient: false) ET appartenir à la ligne sélectionnée (si une ligne est choisie)
-                allDevices.forEach(dev => {
+                devices.forEach(dev => {
                     const pos = positions.find(p => p.deviceId === dev.id);
                     const isVisibleOnLine = !selectedLineId || dev.groupId == selectedLineId;
                     const isPublic = !dev.attributes.hideClient;
 
                     if (pos && isVisibleOnLine && isPublic) {
+                        const isFocused = dev.id == focusedShuttleId;
+                        
                         if (!fleetMarkers[dev.id]) {
                             fleetMarkers[dev.id] = L.marker([pos.latitude, pos.longitude]).addTo(map);
+                            // AU CLIC : On définit le focus
+                            fleetMarkers[dev.id].on('click', () => {
+                                focusedShuttleId = dev.id;
+                                document.getElementById('status-toast').style.display='block';
+                                document.getElementById('status-toast').innerText = `Suivi de : ${dev.name}`;
+                                map.flyTo([pos.latitude, pos.longitude], 17);
+                            });
                         }
                         
                         fleetMarkers[dev.id].setLatLng([pos.latitude, pos.longitude]);
+                        
+                        // Style de l'icône (Normal vs Focus)
+                        const focusClass = isFocused ? 'focused-shuttle' : '';
                         fleetMarkers[dev.id].setIcon(L.divIcon({
-                            html: `<div style="width:40px;height:40px;background:white;border:3px solid #005587;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2)"><img src="images/van.png" style="width:25px;"></div>`,
+                            html: `<div class="shuttle-icon ${focusClass}" style="width:40px;height:40px;background:white;border:3px solid #005587;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.2)"><img src="images/van.png" style="width:25px;"></div>`,
                             className: '', iconSize:[40,40], iconAnchor:[20,20]
                         }));
 
-                        // Centrage automatique si focus activé
-                        if (dev.id == focusedShuttleId) {
+                        // Suivi dynamique
+                        if (isFocused) {
+                            isInternalMove = true;
                             map.panTo([pos.latitude, pos.longitude]);
+                            setTimeout(() => { isInternalMove = false; }, 100);
                         }
                     } else {
-                        // Supprimer le marqueur si la navette ne correspond plus aux critères
                         if (fleetMarkers[dev.id]) {
                             map.removeLayer(fleetMarkers[dev.id]);
                             delete fleetMarkers[dev.id];
                         }
                     }
                 });
-
-                if(selectedLineId) updateShuttleList();
-
             } catch (e) { console.error(e); }
         }
+
+        // Remettre ici votre bloc L.geoJSON du tracé original pour qu'il soit visible
+        const circuitData = {"type":"FeatureCollection","features":[/* ... vos données GeoJSON ... */]};
+        L.geoJSON(circuitData, { style: { color: '#005587', weight: 6, opacity: 0.2 } }).addTo(map);
 
         setInterval(updateMap, 4000);
         updateMap();
