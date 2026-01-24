@@ -93,9 +93,9 @@
 
             <select id="line-choice" class="shuttle-select">
                 <option value="">-- Choisir la Ligne --</option>
-                <option value="Ligne A">Ligne A</option>
-                <option value="Ligne B">Ligne B</option>
-                <option value="Ligne C">Ligne C</option>
+                <option value="Ligne 1 : L'Arboisie / Mamie Megève - Centre Ville">Ligne 1 : L'Arboisie / Mamie Megève - Centre Ville</option>
+                <option value="Ligne 2 : Mamie Megève">Ligne 2 : Mamie Megève</option>
+                <option value="Ligne 3 : Ski Mont d'Arbois">Ligne 3 : Ski Mont d'Arbois</option>
             </select>
 
             <input type="password" id="driver-pin" class="pin-input" placeholder="CODE PIN" inputmode="numeric">
@@ -180,7 +180,7 @@
             if (confirm("Forcer la libération de cette navette ?")) {
                 const dev = allDevices.find(d => d.id == devId);
                 dev.attributes.currentDriver = "";
-                dev.attributes.assignedLine = ""; // On nettoie aussi la ligne
+                dev.attributes.assignedLine = ""; 
                 dev.attributes.hideClient = true;
                 dev.attributes.driverStatus = "Libéré par Admin";
                 await saveToTraccar(devId, dev);
@@ -191,7 +191,7 @@
         async function handleLogin() {
             const pinInput = document.getElementById('driver-pin').value;
             const devId = document.getElementById('shuttle-choice').value;
-            const lineChosen = document.getElementById('line-choice').value; // Récupération ligne
+            const lineChosen = document.getElementById('line-choice').value;
 
             if (!pinInput || !devId || !lineChosen) { alert("PIN, Navette ou Ligne manquante"); return; }
             
@@ -210,9 +210,8 @@
             currentDeviceId = devId;
             currentDriverName = driverNameFromPin;
             
-            // Mise à jour attributs
             dev.attributes.currentDriver = currentDriverName;
-            dev.attributes.assignedLine = lineChosen; // Sauvegarde de la ligne
+            dev.attributes.assignedLine = lineChosen; 
             dev.attributes.hideClient = false;
             dev.attributes.driverStatus = "En service";
             
@@ -337,7 +336,7 @@
                 const devs = await res.json();
                 const dev = devs[0];
                 dev.attributes.currentDriver = "";
-                dev.attributes.assignedLine = ""; // Libération de la ligne
+                dev.attributes.assignedLine = ""; 
                 dev.attributes.hideClient = true;
                 dev.attributes.driverStatus = "Hors service";
                 await saveToTraccar(currentDeviceId, dev);
