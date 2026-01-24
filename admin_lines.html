@@ -26,7 +26,6 @@
         .shuttle-card { background: #fff; border-radius: 12px; padding: 0; border: 2px solid #eee; position: relative; transition: 0.3s; overflow: hidden; }
         .shuttle-card.active { border-color: var(--success); }
         
-        /* NOUVEAU : Bandeau de ligne */
         .line-ribbon { width: 100%; height: 6px; margin-bottom: 8px; }
         .card-content { padding: 0 12px 12px 12px; }
 
@@ -44,7 +43,6 @@
         }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
-
         .switch { position: relative; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
@@ -69,7 +67,6 @@
         <h2 style="margin-bottom: 20px; letter-spacing: 1px;">ACCÈS ADMIN</h2>
         <div class="pin-display" id="dots-display"></div>
         <div id="pin-error">Code incorrect</div>
-        
         <div class="numpad">
             <button class="num-btn" onclick="pressNum('1')">1</button>
             <button class="num-btn" onclick="pressNum('2')">2</button>
@@ -119,9 +116,7 @@
             if (enteredPin.length === 4) { setTimeout(checkPin, 300); }
         }
 
-        function updateDots() {
-            document.getElementById('dots-display').innerText = "•".repeat(enteredPin.length);
-        }
+        function updateDots() { document.getElementById('dots-display').innerText = "•".repeat(enteredPin.length); }
 
         function checkPin() {
             if (enteredPin === "3690") {
@@ -129,19 +124,17 @@
                 document.getElementById('pin-overlay').style.display = 'none';
                 updateAdmin(); 
             } else {
-                enteredPin = "";
-                updateDots();
+                enteredPin = ""; updateDots();
                 document.getElementById('pin-error').style.visibility = 'visible';
                 setTimeout(() => { document.getElementById('pin-error').style.visibility = 'hidden'; }, 2000);
             }
         }
 
-        // --- GESTION DES COULEURS DE LIGNES ---
         function getLineColor(lineName) {
             if (!lineName) return '#ccc';
-            if (lineName.includes('1')) return '#3498db'; // Bleu
-            if (lineName.includes('2')) return '#9b59b6'; // Violet
-            if (lineName.includes('3')) return '#e67e22'; // Orange
+            if (lineName.includes('1')) return '#3498db';
+            if (lineName.includes('2')) return '#9b59b6';
+            if (lineName.includes('3')) return '#e67e22';
             return '#ccc';
         }
 
@@ -172,7 +165,7 @@
                 devices.forEach(dev => {
                     const pos = positions.find(p => p.deviceId === dev.id);
                     const active = !dev.attributes.hideClient;
-                    const statusText = dev.attributes.driverStatus || (active ? "En service" : "Libéré par Admin");
+                    const statusText = dev.attributes.driverStatus || (active ? "En service" : "Hors service");
                     const assignedLine = dev.attributes.assignedLine || "";
                     const lineColor = getLineColor(assignedLine);
 
@@ -220,10 +213,16 @@
             const res = await fetch(`${TRACCAR_URL}/api/devices?id=${id}`, { headers: { 'Authorization': AUTH } });
             const devs = await res.json();
             const d = devs[0];
+            
+            // MODIFICATION ICI : On ne touche qu'à la visibilité et au statut, on ne vide jamais les attributs
             d.attributes.hideClient = !val;
-            d.attributes.driverStatus = val ? "En service" : "Libéré par Admin";
-            if (!val) d.attributes.assignedLine = ""; // On vide la ligne si on désactive
-            await fetch(`${TRACCAR_URL}/api/devices/${id}`, { method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            d.attributes.driverStatus = val ? "En service" : "Désactivé par Admin";
+            
+            await fetch(`${TRACCAR_URL}/api/devices/${id}`, { 
+                method: 'PUT', 
+                headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(d) 
+            });
             updateAdmin();
         }
 
