@@ -4,88 +4,54 @@
     <meta charset="UTF-8">
     <title>ADMIN Expert - 369 Shuttles</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
     <style>
         :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --warning: #f1c40f; --dark: #1a1a1a; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
         
         /* --- HEADER REPLIABLE --- */
         #admin-header { 
-            background: white; 
-            box-shadow: 0 2px 15px rgba(0,0,0,0.1); 
-            z-index: 1001; 
-            overflow-y: auto; 
-            max-height: 45vh; 
-            transition: all 0.4s ease-in-out;
-            padding: 12px;
-            position: relative;
+            background: white; box-shadow: 0 2px 15px rgba(0,0,0,0.1); z-index: 1001; 
+            overflow-y: auto; max-height: 45vh; transition: all 0.4s ease-in-out;
+            padding: 12px; position: relative;
         }
+        .header-collapsed { margin-top: -46vh; padding-top: 0 !important; padding-bottom: 0 !important; opacity: 0; pointer-events: none; }
 
-        /* État Replié : On cache le panneau */
-        .header-collapsed {
-            margin-top: -46vh; /* On le pousse hors de l'écran */
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        /* Le Bouton Toggle : Toujours visible, fixé juste sous le header */
         #toggle-header {
-            position: fixed;
-            top: 45vh; /* Aligné sur la limite basse du header */
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            border: 1px solid #ddd;
-            border-top: none;
-            width: 80px;
-            height: 30px;
-            border-radius: 0 0 15px 15px;
-            cursor: pointer;
-            z-index: 1002;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            font-size: 18px;
-            transition: all 0.4s ease-in-out;
+            position: fixed; top: 45vh; left: 50%; transform: translateX(-50%);
+            background: white; border: 1px solid #ddd; border-top: none;
+            width: 80px; height: 30px; border-radius: 0 0 15px 15px;
+            cursor: pointer; z-index: 1002; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 18px; transition: all 0.4s ease-in-out;
         }
+        .btn-collapsed { top: 0 !important; }
 
-        /* Quand replié, le bouton remonte tout en haut */
-        .btn-collapsed {
-            top: 0 !important;
-        }
-
+        /* --- CARTES --- */
         .line-section { margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #f0f0f0; }
         .line-title { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 3px; margin-bottom: 8px; display: inline-block; color: white; text-transform: uppercase; }
-        
         .shuttle-flex-container { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; }
         .shuttle-card { width: 280px; min-width: 280px; background: #fff; border-radius: 12px; border: 2px solid #eee; position: relative; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .card-active { border: 2px solid var(--success) !important; }
         .line-ribbon { width: 100%; height: 6px; }
-        
-        @keyframes blink-alert { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-        .blink { animation: blink-alert 0.8s infinite; }
-
         .card-content { padding: 10px; }
         .v-details { background: #f0f4f8; padding: 6px 10px; border-radius: 6px; margin: 8px 0; font-size: 11px; color: #444; border-left: 4px solid #cbd5e0; }
-        .v-details b { color: var(--primary); font-size: 12px; }
-
-        #map { flex-grow: 1; width: 100%; z-index: 1; position: relative; }
-        
-        .map-controls { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 8px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 5px; }
-        .map-controls select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 13px; font-weight: bold; cursor: pointer; }
-
         .status-badge { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px; border-radius: 6px; font-size: 12px; font-weight: bold; margin-bottom: 8px; }
         .status-online { background: #e8f8f0; color: #1e7e34; }
         .status-offline { background: #f8f9fa; color: #6c757d; }
 
-        .form-group { display: grid; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #eee; }
-        input { padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
+        /* --- MAP --- */
+        #map { flex-grow: 1; width: 100%; z-index: 1; position: relative; }
+        .map-controls { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 8px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 5px; }
         
-        .driver-edit-row { display: flex; gap: 8px; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
+        /* Switch UI */
         .switch { position: relative; width: 40px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
@@ -118,7 +84,6 @@
     
     <div id="map">
         <div class="map-controls">
-            <label style="font-size: 9px; font-weight: bold; color: #666;">TRACÉ LIGNE</label>
             <select id="circuit-selector" onchange="updateCircuitDisplay(this.value)">
                 <option value="all">🌐 Réseau Complet</option>
                 <option value="ligne1">🔵 Ligne 1</option>
@@ -128,74 +93,35 @@
             </select>
         </div>
     </div>
-    
-    <button style="position:fixed; bottom:20px; right:20px; z-index:1000; width:55px; height:55px; border-radius:50%; border:none; background:white; box-shadow:0 4px 12px rgba(0,0,0,0.3); font-size:22px; cursor:pointer;" onclick="toggleManager(true)">⚙️</button>
-
-    <div id="manager-overlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9998; display:none; align-items:center; justify-content:center;">
-        <div style="background:white; width:95%; max-width:480px; padding:20px; border-radius:15px; position:relative;">
-            <span style="position:absolute; top:10px; right:15px; font-size:28px; cursor:pointer;" onclick="toggleManager(false)">&times;</span>
-            <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #eee;">
-                <button onclick="switchTab('v')" id="tab-v" style="flex:1; padding:10px; border:none; background:none; font-weight:bold; cursor:pointer;">FLOTTE</button>
-                <button onclick="switchTab('c')" id="tab-c" style="flex:1; padding:10px; border:none; background:none; font-weight:bold; cursor:pointer;">ÉQUIPE</button>
-            </div>
-            <div id="tab-content" style="max-height:450px; overflow-y:auto;"></div>
-        </div>
-    </div>
 
     <script>
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
         let fleetMarkers = {};
-        let currentCircuitLayer = null;
         let isAuthorized = false;
         let enteredPin = "";
-        let currentTab = 'v';
 
+        // Initialisation de la carte
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        // Groupe de clusters (Solution Araignée)
+        const markerClusterGroup = L.markerClusterGroup({
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            maxClusterRadius: 20 // Déclenche l'araignée très tôt pour la précision
+        });
+        map.addLayer(markerClusterGroup);
 
         function toggleHeader() {
             const header = document.getElementById('admin-header');
             const btn = document.getElementById('toggle-header');
             header.classList.toggle('header-collapsed');
             btn.classList.toggle('btn-collapsed');
-            
             btn.innerText = header.classList.contains('header-collapsed') ? "▼" : "▲";
-            
             setTimeout(() => { map.invalidateSize(); }, 450);
         }
-
-        const circuitConfigs = {
-            'all':    { file: 'circuit.json', color: '#333',    weight: 3, dash: '5,5', opacity: 0.4 },
-            'ligne1': { file: 'ligne1.json',  color: '#3498db', weight: 6, dash: null,  opacity: 0.7 },
-            'ligne2': { file: 'ligne2.json',  color: '#9b59b6', weight: 6, dash: null,  opacity: 0.7 },
-            'ligne3': { file: 'ligne3.json',  color: '#e67e22', weight: 6, dash: null,  opacity: 0.7 }
-        };
-
-        async function updateCircuitDisplay(type) {
-            if (currentCircuitLayer) map.removeLayer(currentCircuitLayer);
-            if (type === 'none') return;
-            const config = circuitConfigs[type];
-            try {
-                const res = await fetch(config.file);
-                const data = await res.json();
-                currentCircuitLayer = L.geoJSON(data, {
-                    style: { color: config.color, weight: config.weight, opacity: config.opacity, dashArray: config.dash, lineJoin: 'round' }
-                }).addTo(map);
-            } catch (e) {}
-        }
-
-        const hotels = [
-            { name: "Mamie Megève", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
-            { name: "Mont d'Arbois", coords: [45.8542, 6.6317], icon: "images/logomontdarbois.png" },
-            { name: "L'Arboisie", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
-            { name: "Village", coords: [45.8575, 6.6206], icon: "images/logovillage.png" }
-        ];
-        hotels.forEach(h => { L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [46, 46], iconAnchor: [23, 46] }) }).addTo(map); });
-
-        function pressNum(val) { if(enteredPin.length < 4) { enteredPin += val; updateDots(); if(enteredPin.length === 4) setTimeout(checkPin, 300); } }
-        function updateDots() { document.getElementById('dots-display').innerText = "•".repeat(enteredPin.length); }
-        function checkPin() { if(enteredPin === "3690") { isAuthorized = true; document.getElementById('pin-overlay').style.display='none'; updateAdmin(); updateCircuitDisplay('all'); } else { enteredPin=""; updateDots(); } }
 
         function getLineColor(line) {
             if (!line) return '#ccc';
@@ -236,37 +162,48 @@
                     section.innerHTML = `<div class="line-title" style="background:${color}">${lineName}</div>`;
                     const flexDiv = document.createElement('div');
                     flexDiv.className = "shuttle-flex-container";
+                    
                     groupDevs.forEach(dev => {
                         const pos = positions.find(p => p.deviceId === dev.id);
                         const active = !dev.attributes.hideClient;
-                        const statusText = dev.attributes.driverStatus || (active ? "En service" : "Hors service");
-                        const isAlert = statusText.includes("Trafic") || statusText.includes("Accident");
                         const lineColor = getLineColor(dev.attributes.assignedLine);
+                        
+                        // Création de la carte Admin
                         const card = document.createElement('div');
                         card.className = `shuttle-card ${active ? 'card-active' : ''}`;
                         card.innerHTML = `
-                            <div class="line-ribbon ${isAlert ? 'blink' : ''}" style="background:${isAlert ? 'var(--danger)' : lineColor}"></div>
+                            <div class="line-ribbon" style="background:${lineColor}"></div>
                             <div class="card-content">
-                                <div style="display:flex; justify-content:space-between; align-items:start;">
-                                    <div><b>${dev.name}</b></div>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <b>${dev.name}</b>
                                     <label class="switch"><input type="checkbox" ${active?'checked':''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
                                 </div>
-                                <div class="v-details">🚐 <b>${dev.attributes.modele || '--'}</b> | 🆔 <b>${dev.attributes.immatriculation || '--'}</b></div>
-                                <div class="status-badge ${active?'status-online':'status-offline'}" style="margin:5px 0; padding:4px;">${active?'✅':'📣'} ${statusText}</div>
-                                <div style="font-size:10px; color:#666; display:flex; justify-content:space-between; border-top:1px solid #eee; padding-top:5px; margin-top:5px;">
-                                    <span>👤 ${dev.attributes.currentDriver||'--'}</span>
-                                    <span>🔋 ${pos?(pos.attributes.batteryLevel||'--'):'--'}%</span>
-                                </div>
+                                <div class="v-details">🚐 ${dev.attributes.modele || '--'} | 🆔 ${dev.attributes.immatriculation || '--'}</div>
+                                <div class="status-badge ${active?'status-online':'status-offline'}">${active?'En service':'Hors service'}</div>
                             </div>`;
                         flexDiv.appendChild(card);
+
+                        // Gestion du Marqueur sur la carte
                         if(pos) {
-                            if (!fleetMarkers[dev.id]) fleetMarkers[dev.id] = L.marker([pos.latitude, pos.longitude]).addTo(map);
-                            fleetMarkers[dev.id].setLatLng([pos.latitude, pos.longitude]);
-                            fleetMarkers[dev.id].setIcon(L.divIcon({ 
+                            if (!fleetMarkers[dev.id]) {
+                                const marker = L.marker([pos.latitude, pos.longitude]);
+                                // Ajout du Tooltip avec le nom de la navette
+                                marker.bindTooltip(dev.name, { 
+                                    permanent: false, 
+                                    direction: 'top', 
+                                    className: 'shuttle-label' 
+                                });
+                                fleetMarkers[dev.id] = marker;
+                                markerClusterGroup.addLayer(marker);
+                            }
+                            
+                            const m = fleetMarkers[dev.id];
+                            m.setLatLng([pos.latitude, pos.longitude]);
+                            m.setIcon(L.divIcon({ 
                                 html: `<div style="width:34px; height:34px; background:white; border:4px solid ${lineColor}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.3)"><img src="images/van.png" style="width:18px;"></div>`, 
                                 className: '', iconSize:[34,34], iconAnchor:[17,17] 
                             }));
-                            fleetMarkers[dev.id].setOpacity(active ? 1 : 0.4);
+                            m.setOpacity(active ? 1 : 0.4);
                         }
                     });
                     section.appendChild(flexDiv);
@@ -280,51 +217,13 @@
             const devs = await res.json();
             const d = devs[0];
             d.attributes.hideClient = !val;
-            d.attributes.driverStatus = val ? "En service" : "Désactivé";
             await fetch(`${TRACCAR_URL}/api/devices/${id}`, { method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
             updateAdmin();
         }
 
-        function toggleManager(show) { document.getElementById('manager-overlay').style.display = show ? 'flex' : 'none'; if(show) switchTab(currentTab); }
-
-        async function switchTab(tab) {
-            currentTab = tab;
-            document.getElementById('tab-v').style.borderBottom = tab==='v' ? '3px solid var(--primary)' : 'none';
-            document.getElementById('tab-c').style.borderBottom = tab==='c' ? '3px solid var(--primary)' : 'none';
-            let html = "";
-            if(tab === 'v') {
-                const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
-                const devices = await res.json();
-                html = `<div class="form-group"><input id="f-name" placeholder="Nom"><input id="f-modele" placeholder="Modèle"><input id="f-immat" placeholder="Immatriculation"><input id="f-imei" placeholder="ID Traccar"><button onclick="addDevice()" style="background:var(--primary); color:white; padding:12px; border-radius:6px; font-weight:bold; border:none;">+ ENREGISTRER</button></div>`;
-                devices.forEach(d => { html += `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;"><span><b>${d.name}</b> <small>(${d.attributes.immatriculation||'--'})</small></span><button onclick="deleteItem('devices', ${d.id})" style="color:var(--danger); border:none; background:none; font-size:18px;">🗑️</button></div>`; });
-            } else {
-                const res = await fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } });
-                const drivers = await res.json();
-                html = `<div class="form-group"><input id="d-name" placeholder="Nom"><input id="d-pin" placeholder="PIN"><button onclick="addDriver()" style="background:var(--success); color:white; padding:12px; border-radius:6px; font-weight:bold; border:none;">+ AJOUTER</button></div>`;
-                drivers.forEach(d => { html += `<div class="driver-edit-row"><input id="edit-name-${d.id}" value="${d.name}" style="flex:2"><input id="edit-pin-${d.id}" value="${d.uniqueId}" style="flex:1"><button onclick="updateDriver(${d.id})" style="border:none; background:none; font-size:18px;">💾</button><button onclick="deleteItem('drivers', ${d.id})" style="color:var(--danger); border:none; background:none; font-size:18px;">🗑️</button></div>`; });
-            }
-            document.getElementById('tab-content').innerHTML = html;
-        }
-
-        async function updateDriver(id) {
-            const body = { id: id, name: document.getElementById(`edit-name-${id}`).value, uniqueId: document.getElementById(`edit-pin-${id}`).value };
-            await fetch(`${TRACCAR_URL}/api/drivers/${id}`, { method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-            alert("Mis à jour !"); switchTab('c');
-        }
-
-        async function addDevice() {
-            const body = { name: document.getElementById('f-name').value, uniqueId: document.getElementById('f-imei').value, attributes: { modele: document.getElementById('f-modele').value, immatriculation: document.getElementById('f-immat').value, hideClient: true } };
-            await fetch(`${TRACCAR_URL}/api/devices`, { method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-            switchTab('v'); updateAdmin();
-        }
-
-        async function addDriver() {
-            const body = { name: document.getElementById('d-name').value, uniqueId: document.getElementById('d-pin').value };
-            await fetch(`${TRACCAR_URL}/api/drivers`, { method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-            switchTab('c');
-        }
-
-        async function deleteItem(type, id) { if(confirm("Supprimer ?")) { await fetch(`${TRACCAR_URL}/api/${type}/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH } }); switchTab(currentTab); updateAdmin(); } }
+        function pressNum(val) { if(enteredPin.length < 4) { enteredPin += val; updateDots(); if(enteredPin.length === 4) setTimeout(checkPin, 300); } }
+        function updateDots() { document.getElementById('dots-display').innerText = "•".repeat(enteredPin.length); }
+        function checkPin() { if(enteredPin === "3690") { isAuthorized = true; document.getElementById('pin-overlay').style.display='none'; updateAdmin(); } else { enteredPin=""; updateDots(); } }
 
         setInterval(updateAdmin, 5000);
     </script>
