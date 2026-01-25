@@ -11,14 +11,12 @@
             --line1: #3498db; --line2: #9b59b6; --line3: #e67e22;
         }
         body { 
-            margin: 0; 
-            padding: 20px; 
+            margin: 0; padding: 20px; 
             padding-bottom: calc(20px + env(safe-area-inset-bottom));
             font-family: 'Segoe UI', sans-serif; 
             background: var(--bg); color: var(--text); box-sizing: border-box;
             display: flex; flex-direction: column; 
-            height: 100vh; 
-            height: 100dvh; 
+            height: 100vh; height: 100dvh; 
             overflow: hidden;
         }
 
@@ -140,26 +138,25 @@
         async function forceReleaseShuttle() {
             const devId = document.getElementById('shuttle-choice').value;
             const pinInput = document.getElementById('driver-pin').value;
-            
             if (!pinInput) { alert("Saisissez votre PIN chauffeur pour libérer la navette."); return; }
 
             const resD = await fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } });
             const drivers = await resD.json();
             const isValidUser = drivers.some(d => d.uniqueId === pinInput) || pinInput === "3690";
 
-            if (!isValidUser) { alert("Code PIN invalide. Seul un membre de l'équipe peut libérer une navette."); return; }
+            if (!isValidUser) { alert("Code PIN invalide."); return; }
 
-            if (confirm("Forcer la libération de cette navette ? (L'action sera logguée)")) {
+            if (confirm("Forcer la libération ?")) {
                 const res = await fetch(`${TRACCAR_URL}/api/devices?id=${devId}`, { headers: { 'Authorization': AUTH } });
                 const devs = await res.json();
                 const d = devs[0];
                 d.attributes.currentDriver = "";
                 d.attributes.assignedLine = ""; 
                 d.attributes.hideClient = true;
-                d.attributes.driverStatus = "Libéré par " + (pinInput === "3690" ? "Admin" : "Équipier");
+                d.attributes.driverStatus = "Libéré";
                 await saveToTraccar(devId, d);
                 checkAvailableShuttles();
-                alert("Navette libérée. Vous pouvez maintenant démarrer votre service.");
+                alert("Navette libérée.");
             }
         }
 
@@ -168,7 +165,7 @@
             const devId = document.getElementById('shuttle-choice').value;
             const lineChosen = document.getElementById('line-choice').value;
 
-            if (!pinInput || !devId || !lineChosen) { alert("PIN, Navette ou Ligne manquante"); return; }
+            if (!pinInput || !devId || !lineChosen) { alert("Champs manquants"); return; }
             
             const resD = await fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } });
             const drivers = await resD.json();
@@ -181,15 +178,22 @@
             const d = devs[0];
             
             if (d.attributes.currentDriver && d.attributes.currentDriver !== driverNameFromPin && pinInput !== "3690") {
-                alert("Navette occupée. Utilisez le bouton de libération si votre collègue a oublié de se déconnecter."); return;
+                alert("Navette occupée."); return;
             }
             
             currentDeviceId = devId;
             currentDriverName = driverNameFromPin;
+            
+            // --- MODIFICATION ICI : ON GARDE LE STATUT SI EXISTANT ---
+            const existingStatus = d.attributes.driverStatus;
             d.attributes.currentDriver = currentDriverName;
             d.attributes.assignedLine = lineChosen; 
-            d.attributes.hideClient = false;
-            d.attributes.driverStatus = "En service";
+            
+            // Si pas de statut valide ou si c'était "Libéré/Hors service", on met "En service"
+            if (!existingStatus || existingStatus === "Hors service" || existingStatus === "Libéré") {
+                d.attributes.driverStatus = "En service";
+                d.attributes.hideClient = false;
+            }
             
             await saveToTraccar(devId, d);
             document.getElementById('login-overlay').style.display = 'none';
@@ -198,11 +202,8 @@
 
         function initInterface(device) {
             const assignedLine = device.attributes.assignedLine || "";
-            const lineDisplay = document.getElementById('line-display');
-            const header = document.querySelector('.header');
-
             document.getElementById('shuttle-name').innerText = device.name;
-            lineDisplay.innerText = "📍 " + assignedLine;
+            document.getElementById('line-display').innerText = "📍 " + assignedLine;
             document.getElementById('driver-display').innerText = "Chauffeur : " + currentDriverName;
 
             let color = "#444"; 
@@ -210,8 +211,8 @@
             else if (assignedLine.includes("2")) color = "#9b59b6";
             else if (assignedLine.includes("3")) color = "#e67e22";
 
-            header.style.borderBottom = `4px solid ${color}`;
-            lineDisplay.style.color = color;
+            document.querySelector('.header').style.borderBottom = `4px solid ${color}`;
+            document.getElementById('line-display').style.color = color;
 
             setInterval(updateSpeed, 3000);
             setInterval(syncWithServer, 5000);
@@ -225,17 +226,14 @@
                 const devs = await res.json();
                 const d = devs[0];
                 const shouldBeVisible = !d.attributes.hideClient;
-                document.getElementById('service-toggle').checked = shouldBeVisible;
                 updateUI(shouldBeVisible);
                 
-                // --- Mise à jour visuelle du bouton clignotant ---
                 const status = d.attributes.driverStatus || "En service";
                 document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
                 if (status.includes('Trafic')) document.getElementById('btn-trafic').classList.add('btn-active');
                 if (status.includes('Accident')) document.getElementById('btn-accident').classList.add('btn-active');
                 if (status.includes('Plein')) document.getElementById('btn-plein').classList.add('btn-active');
                 if (status.includes('Pause')) document.getElementById('btn-pause').classList.add('btn-active');
-                
             } catch (e) {}
         }
 
@@ -262,19 +260,12 @@
                 const d = devs[0];
                 d.attributes.driverStatus = label;
 
-                // Gestion du clignotement
                 document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
-                if (label !== 'En service') {
-                    element.classList.add('btn-active');
-                }
+                if (label !== 'En service') element.classList.add('btn-active');
 
-                if (label.includes('Plein') || label.includes('Pause')) {
-                    d.attributes.hideClient = true;
-                    updateUI(false);
-                } else {
-                    d.attributes.hideClient = false;
-                    updateUI(true);
-                }
+                d.attributes.hideClient = (label.includes('Plein') || label.includes('Pause'));
+                updateUI(!d.attributes.hideClient);
+                
                 await saveToTraccar(currentDeviceId, d);
                 showToast(label);
             } catch (e) {}
