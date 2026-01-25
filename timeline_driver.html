@@ -7,27 +7,31 @@
     <style>
         :root { --primary: #005587; --bg: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .container { max-width: 1300px; margin: 0 auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
-        .controls { display: flex; gap: 10px; align-items: center; }
-        input[type="date"] { padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
-        button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #chart_div { width: 100%; height: 500px; }
-        .loading-overlay { display: none; text-align: center; padding: 50px; font-style: italic; color: #666; }
+        #chart_div { width: 100%; height: 600px; }
+        .legend { display: flex; gap: 20px; font-size: 12px; margin-bottom: 10px; justify-content: flex-end; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 12px; height: 12px; border-radius: 3px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h2 style="color:var(--primary); margin:0;">📊 PLANNING DES ROTATIONS</h2>
-        <div class="controls">
-            <input type="date" id="target-date">
-            <button onclick="drawChart()">Actualiser</button>
+        <h2 style="color:var(--primary); margin:0;">🗓️ PLANNING DES ROTATIONS</h2>
+        <div>
+            <input type="date" id="target-date" style="padding:8px; border-radius:5px; border:1px solid #ddd;">
+            <button onclick="drawChart()" style="background:var(--primary); color:white; border:none; padding:9px 20px; border-radius:5px; cursor:pointer; font-weight:bold;">Actualiser</button>
         </div>
     </div>
 
-    <div id="loading" class="loading-overlay">Analyse des données Traccar en cours...</div>
+    <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:#3498db"></div> Ligne 1</div>
+        <div class="legend-item"><div class="dot" style="background:#9b59b6"></div> Ligne 2</div>
+        <div class="legend-item"><div class="dot" style="background:#e67e22"></div> Ligne 3</div>
+    </div>
+
     <div id="chart_div"></div>
 </div>
 
@@ -36,18 +40,11 @@
     const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
     
     google.charts.load('current', {'packages':['timeline'], 'language': 'fr'});
-    
     document.getElementById('target-date').valueAsDate = new Date();
 
     async function drawChart() {
-        const dateStr = document.getElementById('target-date').value;
-        const loader = document.getElementById('loading');
-        const chartDiv = document.getElementById('chart_div');
-        
-        loader.style.display = 'block';
-        chartDiv.style.opacity = '0.3';
-
         try {
+            const dateStr = document.getElementById('target-date').value;
             const [resDev, resPos] = await Promise.all([
                 fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
                 fetch(`${TRACCAR_URL}/api/positions?from=${dateStr}T00:00:00Z&to=${dateStr}T23:59:59Z`, { headers: { 'Authorization': AUTH } })
@@ -55,72 +52,76 @@
 
             const devices = await resDev.json();
             const positions = await resPos.json();
-
-            if (positions.length === 0) {
-                alert("Aucune donnée pour cette journée.");
-                loader.style.display = 'none';
-                return;
-            }
-
             const container = document.getElementById('chart_div');
             const chart = new google.visualization.Timeline(container);
             const dataTable = new google.visualization.DataTable();
 
             dataTable.addColumn({ type: 'string', id: 'Navette' });
             dataTable.addColumn({ type: 'string', id: 'Chauffeur' });
+            dataTable.addColumn({ type: 'string', role: 'style' }); // Ajout du style pour les couleurs
             dataTable.addColumn({ type: 'date', id: 'Début' });
             dataTable.addColumn({ type: 'date', id: 'Fin' });
 
             const rows = [];
-            
-            // Groupement des positions par Navette
-            const devIds = [...new Set(positions.map(p => p.deviceId))];
+            const now = new Date();
 
-            devIds.forEach(dId => {
-                const devName = devices.find(d => d.id === dId)?.name || `ID: ${dId}`;
-                const devPos = positions.filter(p => p.deviceId === dId).sort((a,b) => new Date(a.deviceTime) - new Date(b.deviceTime));
-
+            devices.forEach(dev => {
+                const devPos = positions.filter(p => p.deviceId === dev.id).sort((a,b) => new Date(a.deviceTime) - new Date(b.deviceTime));
+                
+                // 1. Gestion de l'historique (via positions)
                 let currentDriver = null;
                 let startTime = null;
 
                 devPos.forEach((p, index) => {
-                    const driverAtPos = p.attributes.currentDriver || "Sans Chauffeur";
+                    const driverAtPos = p.attributes.currentDriver;
                     const timeAtPos = new Date(p.deviceTime);
 
                     if (driverAtPos !== currentDriver) {
-                        if (currentDriver !== null) {
-                            rows.push([devName, currentDriver, startTime, timeAtPos]);
+                        if (currentDriver && currentDriver !== "Aucun chauffeur") {
+                            rows.push([dev.name, currentDriver, getColor(dev), startTime, timeAtPos]);
                         }
                         currentDriver = driverAtPos;
                         startTime = timeAtPos;
                     }
                     
-                    // Si c'est le dernier point de la journée pour cette navette
-                    if (index === devPos.length - 1 && currentDriver !== null) {
-                        rows.push([devName, currentDriver, startTime, timeAtPos]);
+                    if (index === devPos.length - 1 && currentDriver && currentDriver !== "Aucun chauffeur") {
+                        // On termine la barre à l'heure du dernier point ou à "maintenant" si c'est aujourd'hui
+                        const endTime = (dateStr === now.toISOString().split('T')[0]) ? now : timeAtPos;
+                        rows.push([dev.name, currentDriver, getColor(dev), startTime, endTime]);
                     }
                 });
+
+                // 2. Ajout du temps réel (Si Laura est logguée actuellement sur OBS 1)
+                const liveDriver = dev.attributes.currentDriver;
+                if (liveDriver && liveDriver !== "Aucun chauffeur" && dateStr === now.toISOString().split('T')[0]) {
+                    // Si le dernier segment de l'historique n'est pas déjà Laura, on l'ajoute
+                    const lastRow = rows.filter(r => r[0] === dev.name).pop();
+                    if (!lastRow || lastRow[1] !== liveDriver) {
+                        rows.push([dev.name, liveDriver, getColor(dev), new Date(now.getTime() - 1000*60*5), now]); 
+                    }
+                }
             });
 
+            if (rows.length === 0) {
+                container.innerHTML = "<div style='text-align:center; padding:50px;'>Aucune activité chauffeur enregistrée pour cette journée.</div>";
+                return;
+            }
+
             dataTable.addRows(rows);
+            chart.draw(dataTable, {
+                timeline: { showRowLabels: true, groupByRowLabel: true },
+                hAxis: { format: 'HH:mm' }
+            });
 
-            const options = {
-                timeline: { 
-                    showRowLabels: true,
-                    groupByRowLabel: true,
-                    colorByRowLabel: false
-                },
-                avoidOverlappingGridLines: false
-            };
+        } catch (e) { console.error(e); }
+    }
 
-            chart.draw(dataTable, options);
-            loader.style.display = 'none';
-            chartDiv.style.opacity = '1';
-
-        } catch (e) {
-            console.error(e);
-            loader.innerHTML = "Erreur de chargement des données.";
-        }
+    function getColor(dev) {
+        const line = dev.attributes.assignedLine || "";
+        if (line.includes("1")) return "#3498db";
+        if (line.includes("2")) return "#9b59b6";
+        if (line.includes("3")) return "#e67e22";
+        return "#bdc3c7";
     }
 </script>
 
