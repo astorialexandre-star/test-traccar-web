@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>369 - Planning Expert</title>
+    <title>369 - Audit des Rotations</title>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
         :root { --primary: #005587; --bg: #f4f7f6; }
@@ -13,25 +13,24 @@
         label { font-size: 11px; font-weight: bold; color: var(--primary); text-transform: uppercase; }
         input, select { padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; }
         .btn-refresh { background: var(--primary); color: white; border: none; padding: 9px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #chart_div { width: 100%; min-height: 400px; }
-        #debug-log { font-family: monospace; font-size: 10px; color: #888; margin-top: 10px; padding: 10px; background: #fafafa; border-radius: 5px; }
+        #chart_div { width: 100%; min-height: 450px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="color:var(--primary); margin: 0 0 15px 0;">🗓️ AUDIT DES ROTATIONS (DEBUG MODE)</h2>
+    <h2 style="color:var(--primary); margin: 0 0 15px 0;">🗓️ AUDIT DES ROTATIONS</h2>
     
     <div class="filter-bar">
         <div class="filter-group"><label>Navette</label><select id="shuttle-filter"><option value="all">-- Toutes --</option></select></div>
         <div class="filter-group"><label>Date</label><input type="date" id="target-date"></div>
-        <div class="filter-group"><label>De (Heure)</label><input type="time" id="start-time" value="00:00"></div>
-        <div class="filter-group"><label>À (Heure)</label><input type="time" id="end-time" value="23:59"></div>
-        <button class="btn-refresh" onclick="drawChart()">Lancer l'Analyse</button>
+        <div class="filter-group"><label>Heures</label><div style="display:flex; gap:5px;">
+            <input type="time" id="start-time" value="06:00"> à <input type="time" id="end-time" value="23:30">
+        </div></div>
+        <button class="btn-refresh" onclick="drawChart()">Lancer l'Audit</button>
     </div>
 
     <div id="chart_div"></div>
-    <div id="debug-log"></div>
 </div>
 
 <script>
@@ -58,34 +57,31 @@
     }
 
     async function drawChart() {
-        const debug = document.getElementById('debug-log');
+        const container = document.getElementById('chart_div');
         const dateStr = document.getElementById('target-date').value;
         const startH = document.getElementById('start-time').value;
         const endH = document.getElementById('end-time').value;
         const selectedId = document.getElementById('shuttle-filter').value;
 
-        debug.innerHTML = "Requête lancée...";
+        container.innerHTML = "Analyse des logs de connexion...";
 
         try {
-            // Création de dates ISO propres pour l'API Traccar
             const from = new Date(`${dateStr}T${startH}:00`).toISOString();
             const to = new Date(`${dateStr}T${endH}:00`).toISOString();
 
-            let url = `${TRACCAR_URL}/api/positions?from=${from}&to=${to}`;
-            if (selectedId !== "all") url += `&deviceId=${selectedId}`;
-
-            const [resDev, resPos] = await Promise.all([
+            // 1. On récupère les événements et les référentiels
+            const [resDev, resDriv, resEv] = await Promise.all([
                 fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
-                fetch(url, { headers: { 'Authorization': AUTH } })
+                fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } }),
+                fetch(`${TRACCAR_URL}/api/reports/events?from=${from}&to=${to}&type=driverChanged`, { headers: { 'Authorization': AUTH } })
             ]);
 
             const devices = await resDev.json();
-            const positions = await resPos.json();
+            const drivers = await resDriv.json();
+            const events = await resEv.json();
 
-            debug.innerHTML = `Points GPS trouvés : ${positions.length} | Navettes : ${devices.length}`;
-
-            if (positions.length === 0) {
-                document.getElementById('chart_div').innerHTML = "Aucune position trouvée sur ce créneau.";
+            if (events.length === 0) {
+                container.innerHTML = "Aucun mouvement de chauffeur enregistré sur cette période.";
                 return;
             }
 
@@ -97,45 +93,45 @@
             dataTable.addColumn({ type: 'date', id: 'Fin' });
 
             const rows = [];
-            const activeDevices = (selectedId === "all") ? devices : devices.filter(d => d.id == selectedId);
 
-            activeDevices.forEach(dev => {
-                const devPos = positions.filter(p => p.deviceId === dev.id).sort((a,b) => new Date(a.deviceTime) - new Date(b.deviceTime));
+            // 2. Traitement des sessions par navette
+            devices.forEach(dev => {
+                if (selectedId !== "all" && dev.id != selectedId) return;
+
+                const devEvents = events.filter(e => e.deviceId === dev.id).sort((a,b) => new Date(a.eventTime) - new Date(b.eventTime));
                 
-                let currentDriver = null;
-                let startTime = null;
-
-                devPos.forEach((p, index) => {
-                    // On teste plusieurs noms d'attributs possibles
-                    const driverAtPos = p.attributes.currentDriver || p.attributes.driverName || (p.attributes.driverUniqueId ? "ID:"+p.attributes.driverUniqueId : null);
-                    const timeAtPos = new Date(p.deviceTime);
-
-                    if (driverAtPos !== currentDriver) {
-                        if (currentDriver) {
-                            rows.push([dev.name, currentDriver, getColor(dev), startTime, timeAtPos]);
-                        }
-                        currentDriver = driverAtPos;
-                        startTime = timeAtPos;
-                    }
+                devEvents.forEach((ev, index) => {
+                    const driver = drivers.find(d => d.id === ev.driverId);
+                    const startTime = new Date(ev.eventTime);
                     
-                    if (index === devPos.length - 1 && currentDriver) {
-                        rows.push([dev.name, currentDriver, getColor(dev), startTime, timeAtPos]);
+                    // La fin de la session est soit l'événement suivant, soit "maintenant" (ou l'heure de fin choisie)
+                    let endTime;
+                    if (index < devEvents.length - 1) {
+                        endTime = new Date(devEvents[index + 1].eventTime);
+                    } else {
+                        endTime = new Date(); // Session en cours
+                        const limit = new Date(`${dateStr}T${endH}:00`);
+                        if (endTime > limit) endTime = limit;
+                    }
+
+                    if (driver) {
+                        rows.push([dev.name, driver.name, getColor(dev), startTime, endTime]);
                     }
                 });
             });
 
             if (rows.length === 0) {
-                document.getElementById('chart_div').innerHTML = "Aucun chauffeur identifié dans les attributs des points GPS.";
+                container.innerHTML = "Données insuffisantes pour générer le planning.";
                 return;
             }
 
-            const chart = new google.visualization.Timeline(document.getElementById('chart_div'));
+            const chart = new google.visualization.Timeline(container);
             chart.draw(dataTable, {
                 timeline: { showRowLabels: true, groupByRowLabel: true },
                 hAxis: { format: 'HH:mm' }
             });
 
-        } catch (e) { debug.innerHTML = "ERREUR : " + e.message; }
+        } catch (e) { container.innerHTML = "Erreur : " + e.message; }
     }
 
     function getColor(dev) {
