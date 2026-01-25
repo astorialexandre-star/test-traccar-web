@@ -34,9 +34,9 @@
         }
         .btn-collapsed { top: 0 !important; }
 
-        /* --- ALERTES CLIGNOTANTES --- */
-        @keyframes blink-alert { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
-        .blink { animation: blink-alert 0.6s infinite; }
+        /* --- ALERTES CLIGNOTANTES RALENTIES --- */
+        @keyframes blink-slow { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        .blink { animation: blink-slow 1.5s infinite ease-in-out; }
         .status-accident { background: var(--danger) !important; color: white !important; }
         .status-trafic { background: var(--warning) !important; color: white !important; }
 
@@ -48,7 +48,8 @@
         .card-active { border: 2px solid var(--success) !important; }
         .line-ribbon { width: 100%; height: 6px; }
         .card-content { padding: 10px; }
-        .v-details { background: #f0f4f8; padding: 6px 10px; border-radius: 6px; margin: 8px 0; font-size: 11px; color: #444; border-left: 4px solid #cbd5e0; }
+        .v-details { background: #f0f4f8; padding: 8px 10px; border-radius: 6px; margin: 8px 0; font-size: 11px; color: #444; border-left: 4px solid #cbd5e0; line-height: 1.5; }
+        .driver-name { font-weight: bold; color: var(--primary); display: block; margin-top: 2px; }
         .status-badge { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: bold; margin-bottom: 5px; text-align: center; }
         .status-online { background: #e8f8f0; color: #1e7e34; }
         .status-offline { background: #f8f9fa; color: #6c757d; }
@@ -203,6 +204,7 @@
                         const lineColor = getLineColor(dev.attributes.assignedLine);
                         
                         const statusChauffeur = dev.attributes.driverStatus || "";
+                        const driverName = dev.attributes.driverName || "Aucun chauffeur";
                         const isAccident = statusChauffeur.includes("Accident");
                         const isTrafic = statusChauffeur.includes("Trafic");
                         const isAlert = isAccident || isTrafic;
@@ -220,7 +222,10 @@
                                     <b>${dev.name}</b>
                                     <label class="switch"><input type="checkbox" ${active?'checked':''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
                                 </div>
-                                <div class="v-details">🚐 ${dev.attributes.modele || '--'} | 🆔 ${dev.attributes.immatriculation || '--'}</div>
+                                <div class="v-details">
+                                    🚐 ${dev.attributes.modele || '--'} | 🆔 ${dev.attributes.immatriculation || '--'}<br>
+                                    👤 <span class="driver-name">${driverName}</span>
+                                </div>
                                 <div class="status-badge ${statusClass}">
                                     ${isAlert ? '⚠️ ' : ''}${statusChauffeur || (active ? "En service" : "Hors service")}
                                 </div>
