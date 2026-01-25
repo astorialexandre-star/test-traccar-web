@@ -30,14 +30,17 @@
         .line-title { font-size: 10px; font-weight: bold; padding: 1px 6px; border-radius: 3px; margin-bottom: 6px; display: inline-block; color: white; text-transform: uppercase; }
         .shuttle-flex-container { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
         
-        .shuttle-card { width: 260px; min-width: 260px; background: #fff; border-radius: 8px; border: 1px solid #eee; position: relative; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        /* CARTE COMPACTE OPTIMISÉE */
+        .shuttle-card { width: 265px; min-width: 265px; background: #fff; border-radius: 8px; border: 1px solid #eee; position: relative; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .card-active { border: 1.5px solid var(--success) !important; }
         .line-ribbon { width: 100%; height: 4px; }
         .card-content { padding: 8px; }
         .card-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         
-        .v-details { background: #f0f4f8; padding: 5px 8px; border-radius: 4px; margin: 4px 0; font-size: 10px; color: #444; border-left: 3px solid #cbd5e0; line-height: 1.3; }
-        .driver-name { font-weight: bold; color: var(--primary); display: inline; }
+        .v-details { background: #f0f4f8; padding: 4px 8px; border-radius: 4px; margin: 4px 0; font-size: 10px; color: #444; border-left: 3px solid #cbd5e0; line-height: 1.4; }
+        .driver-name { font-weight: bold; color: var(--primary); }
+        .plate-number { font-family: monospace; background: #fff; padding: 0 3px; border: 1px solid #ccd; border-radius: 2px; font-weight: bold; margin-left: 2px; font-size: 9px; }
+        
         .status-badge { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-top: 4px; height: 24px; box-sizing: border-box; }
         .status-online { background: #e8f8f0; color: #1e7e34; }
         .status-offline { background: #f8f9fa; color: #6c757d; }
@@ -162,6 +165,8 @@
                         const pos = positions.find(p => p.deviceId === dev.id);
                         const active = !dev.attributes.hideClient;
                         const chauffeur = dev.attributes.currentDriver || "Non assigné";
+                        const immatriculation = dev.attributes.immatriculation || "---";
+                        const modele = dev.attributes.modele || "Van";
                         const statusChauffeur = dev.attributes.driverStatus || "";
                         const isAlert = statusChauffeur.includes("Accident") || statusChauffeur.includes("Trafic");
 
@@ -179,7 +184,8 @@
                                     <label class="switch"><input type="checkbox" ${active?'checked':''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
                                 </div>
                                 <div class="v-details">
-                                    🚐 ${dev.attributes.modele || '--'} | 👤 <span class="driver-name">${chauffeur}</span>
+                                    <div>🚐 ${modele} <span class="plate-number">${immatriculation}</span></div>
+                                    <div>👤 Chauffeur: <span class="driver-name">${chauffeur}</span></div>
                                 </div>
                                 <div class="status-badge ${statusClass}">${isAlert ? '⚠️ ' : ''}${statusChauffeur || (active ? "En service" : "Désactivé")}</div>
                             </div>`;
