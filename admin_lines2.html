@@ -10,13 +10,48 @@
         :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --warning: #f1c40f; --dark: #1a1a1a; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
         
-        /* --- HEADER & CARDS --- */
-        #admin-header { padding: 12px; background: white; box-shadow: 0 2px 15px rgba(0,0,0,0.1); z-index: 1000; overflow-y: auto; max-height: 45vh; }
-        
+        /* --- HEADER REPLIABLE --- */
+        #admin-header { 
+            background: white; 
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1); 
+            z-index: 1000; 
+            overflow-y: auto; 
+            max-height: 45vh; 
+            transition: transform 0.4s ease-in-out, margin-top 0.4s ease-in-out;
+            padding: 12px;
+            position: relative;
+        }
+
+        /* Classe pour l'état replié */
+        .header-collapsed {
+            transform: translateY(-100%);
+            margin-bottom: -45vh; /* On "annule" l'espace pris pour que la carte remonte */
+        }
+
+        /* Bouton de bascule (Toggle) */
+        #toggle-header {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            width: 60px;
+            height: 25px;
+            border-radius: 0 0 12px 12px;
+            cursor: pointer;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 14px;
+        }
+
         .line-section { margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #f0f0f0; }
         .line-title { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 3px; margin-bottom: 8px; display: inline-block; color: white; text-transform: uppercase; }
         
-        /* Alignement compact à gauche avec taille fixe */
         .shuttle-flex-container { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; }
         
         .shuttle-card { 
@@ -28,27 +63,19 @@
             position: relative; 
             overflow: hidden; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-            transition: all 0.3s;
         }
         
-        /* Bordure verte pour les navettes actives */
         .card-active { border: 2px solid var(--success) !important; }
-        
         .line-ribbon { width: 100%; height: 6px; }
         
-        /* Animation Clignotante pour alertes */
-        @keyframes blink-alert {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
-        }
+        @keyframes blink-alert { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
         .blink { animation: blink-alert 0.8s infinite; }
 
         .card-content { padding: 10px; }
         .v-details { background: #f0f4f8; padding: 6px 10px; border-radius: 6px; margin: 8px 0; font-size: 11px; color: #444; border-left: 4px solid #cbd5e0; }
         .v-details b { color: var(--primary); font-size: 12px; }
 
-        #map { flex-grow: 1; width: 100%; z-index: 1; position: relative; }
+        #map { flex-grow: 1; width: 100%; z-index: 1; position: relative; transition: height 0.4s ease-in-out; }
         
         .map-controls {
             position: absolute; top: 10px; right: 10px; z-index: 1000;
@@ -91,6 +118,7 @@
 
     <div id="admin-header">
         <div id="shuttle-container"></div>
+        <button id="toggle-header" onclick="toggleHeader()">▲</button>
     </div>
     
     <div id="map">
@@ -130,6 +158,23 @@
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        // --- GESTION DU REPLI ---
+        function toggleHeader() {
+            const header = document.getElementById('admin-header');
+            const btn = document.getElementById('toggle-header');
+            header.classList.toggle('header-collapsed');
+            
+            if (header.classList.contains('header-collapsed')) {
+                btn.innerText = "▼";
+                btn.style.bottom = "-25px"; // Reste accessible même replié
+            } else {
+                btn.innerText = "▲";
+            }
+            
+            // On force Leaflet à recalculer la taille de la carte après l'animation
+            setTimeout(() => { map.invalidateSize(); }, 400);
+        }
 
         const circuitConfigs = {
             'all':    { file: 'circuit.json', color: '#333',    weight: 3, dash: '5,5', opacity: 0.4 },
@@ -196,23 +241,18 @@
 
                 for (const [lineName, groupDevs] of Object.entries(groups)) {
                     if (groupDevs.length === 0) continue;
-
                     const section = document.createElement('div');
                     section.className = "line-section";
-                    
                     const color = getLineColor(lineName);
                     section.innerHTML = `<div class="line-title" style="background:${color}">${lineName}</div>`;
-                    
                     const flexDiv = document.createElement('div');
                     flexDiv.className = "shuttle-flex-container";
-
                     groupDevs.forEach(dev => {
                         const pos = positions.find(p => p.deviceId === dev.id);
                         const active = !dev.attributes.hideClient;
                         const statusText = dev.attributes.driverStatus || (active ? "En service" : "Hors service");
                         const isAlert = statusText.includes("Trafic") || statusText.includes("Accident");
                         const lineColor = getLineColor(dev.attributes.assignedLine);
-                        
                         const card = document.createElement('div');
                         card.className = `shuttle-card ${active ? 'card-active' : ''}`;
                         card.innerHTML = `
@@ -230,7 +270,6 @@
                                 </div>
                             </div>`;
                         flexDiv.appendChild(card);
-
                         if(pos) {
                             if (!fleetMarkers[dev.id]) fleetMarkers[dev.id] = L.marker([pos.latitude, pos.longitude]).addTo(map);
                             fleetMarkers[dev.id].setLatLng([pos.latitude, pos.longitude]);
