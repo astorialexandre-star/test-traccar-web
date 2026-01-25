@@ -40,6 +40,17 @@
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         .status-blink { animation: blink 1s infinite; }
 
+        /* Animation pour le fond de l'icône sur la carte */
+        @keyframes blink-bg {
+            0% { background-color: white; }
+            50% { background-color: var(--status-color); }
+            100% { background-color: white; }
+        }
+        .marker-blink-bg {
+            animation: blink-bg 1s infinite;
+            z-index: 1000 !important;
+        }
+
         .v-details { background: #f0f4f8; padding: 8px; border-radius: 6px; font-size: 11px; margin: 5px 0; border-left: 4px solid var(--primary); }
         .plate-box { font-family: monospace; background: white; padding: 1px 4px; border: 1px solid #ccc; font-weight: bold; }
 
@@ -297,7 +308,7 @@
             } catch(e) {}
         }
 
-        function updateMarker(dev, pos, color) {
+        function updateMarker(dev, pos, lineContextColor) {
             if (!fleetMarkers[dev.id]) {
                 const marker = L.marker([pos.latitude, pos.longitude]);
                 marker.bindTooltip(dev.name, { direction: 'top' });
@@ -306,10 +317,25 @@
             }
             const m = fleetMarkers[dev.id];
             m.setLatLng([pos.latitude, pos.longitude]);
+
+            // Détermination de la couleur de statut pour le clignotement de fond
+            const status = dev.attributes.driverStatus || "En service";
+            let statusColor = ""; 
+            let blinkClass = "";
+
+            if (status.includes("Trafic")) { 
+                statusColor = "var(--warning)"; 
+                blinkClass = "marker-blink-bg"; 
+            } else if (status.includes("Accident")) { 
+                statusColor = "var(--danger)"; 
+                blinkClass = "marker-blink-bg"; 
+            }
+
             m.setIcon(L.divIcon({ 
-                html: `<div style="width:34px; height:34px; background:white; border:4px solid ${color}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.3)"><img src="images/van.png" style="width:18px;"></div>`, 
+                html: `<div class="${blinkClass}" style="width:34px; height:34px; background:white; border:4px solid ${lineContextColor}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.3); --status-color:${statusColor}"><img src="images/van.png" style="width:18px;"></div>`, 
                 className: '', iconSize:[34,34], iconAnchor:[17,17] 
             }));
+            
             m.setOpacity(!dev.attributes.hideClient ? 1 : 0.4);
         }
 
