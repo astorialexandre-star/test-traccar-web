@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
     <style>
-        :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --warning: #f1c40f; --dark: #1a1a1a; }
+        :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --warning: #f39c12; --dark: #1a1a1a; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
         
         /* --- HEADER REPLIABLE --- */
@@ -34,7 +34,13 @@
         }
         .btn-collapsed { top: 0 !important; }
 
-        /* --- CARTES --- */
+        /* --- ALERTES CLIGNOTANTES --- */
+        @keyframes blink-alert { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
+        .blink { animation: blink-alert 0.6s infinite; }
+        .status-accident { background: var(--danger) !important; color: white !important; }
+        .status-trafic { background: var(--warning) !important; color: white !important; }
+
+        /* --- CARTES NAVETTES --- */
         .line-section { margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #f0f0f0; }
         .line-title { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 3px; margin-bottom: 8px; display: inline-block; color: white; text-transform: uppercase; }
         .shuttle-flex-container { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; }
@@ -103,11 +109,9 @@
         let isAuthorized = false;
         let enteredPin = "";
 
-        // Initialisation de la carte
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Groupe de clusters (Solution Araignée)
         const markerClusterGroup = L.markerClusterGroup({
             spiderfyOnMaxZoom: true,
             showCoverageOnHover: false,
@@ -116,7 +120,6 @@
         });
         map.addLayer(markerClusterGroup);
 
-        // Configuration des circuits GeoJSON
         const circuitConfigs = {
             'all':    { file: 'circuit.json', color: '#333',    weight: 3, dash: '5,5', opacity: 0.4 },
             'ligne1': { file: 'ligne1.json',  color: '#3498db', weight: 6, dash: null,  opacity: 0.7 },
@@ -134,19 +137,16 @@
                 currentCircuitLayer = L.geoJSON(data, {
                     style: { color: config.color, weight: config.weight, opacity: config.opacity, dashArray: config.dash, lineJoin: 'round' }
                 }).addTo(map);
-            } catch (e) { console.error("Erreur GeoJSON:", e); }
+            } catch (e) {}
         }
 
-        // Icônes Hôtels
         const hotels = [
             { name: "Mamie Megève", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
             { name: "Mont d'Arbois", coords: [45.8542, 6.6317], icon: "images/logomontdarbois.png" },
             { name: "L'Arboisie", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
             { name: "Village", coords: [45.8575, 6.6206], icon: "images/logovillage.png" }
         ];
-        hotels.forEach(h => { 
-            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [46, 46], iconAnchor: [23, 46] }) }).addTo(map); 
-        });
+        hotels.forEach(h => { L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [46, 46], iconAnchor: [23, 46] }) }).addTo(map); });
 
         function toggleHeader() {
             const header = document.getElementById('admin-header');
@@ -202,17 +202,30 @@
                         const active = !dev.attributes.hideClient;
                         const lineColor = getLineColor(dev.attributes.assignedLine);
                         
+                        const statusChauffeur = dev.attributes.driverStatus || "";
+                        const isAccident = statusChauffeur.includes("Accident");
+                        const isTrafic = statusChauffeur.includes("Trafic");
+                        const isAlert = isAccident || isTrafic;
+
+                        let ribbonColor = lineColor;
+                        let statusClass = active ? 'status-online' : 'status-offline';
+                        
+                        if (isAccident) { ribbonColor = "#e74c3c"; statusClass = "status-accident blink"; }
+                        else if (isTrafic) { ribbonColor = "#f39c12"; statusClass = "status-trafic blink"; }
+
                         const card = document.createElement('div');
                         card.className = `shuttle-card ${active ? 'card-active' : ''}`;
                         card.innerHTML = `
-                            <div class="line-ribbon" style="background:${lineColor}"></div>
+                            <div class="line-ribbon ${isAlert ? 'blink' : ''}" style="background:${ribbonColor}"></div>
                             <div class="card-content">
                                 <div style="display:flex; justify-content:space-between;">
                                     <b>${dev.name}</b>
                                     <label class="switch"><input type="checkbox" ${active?'checked':''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
                                 </div>
                                 <div class="v-details">🚐 ${dev.attributes.modele || '--'} | 🆔 ${dev.attributes.immatriculation || '--'}</div>
-                                <div class="status-badge ${active?'status-online':'status-offline'}">${active?'En service':'Hors service'}</div>
+                                <div class="status-badge ${statusClass}">
+                                    ${isAlert ? '⚠️ ' : ''}${statusChauffeur || (active ? "En service" : "Hors service")}
+                                </div>
                             </div>`;
                         flexDiv.appendChild(card);
 
@@ -223,11 +236,11 @@
                                 fleetMarkers[dev.id] = marker;
                                 markerClusterGroup.addLayer(marker);
                             }
-                            
                             const m = fleetMarkers[dev.id];
                             m.setLatLng([pos.latitude, pos.longitude]);
+                            const markerBorder = isAlert ? ribbonColor : lineColor;
                             m.setIcon(L.divIcon({ 
-                                html: `<div style="width:34px; height:34px; background:white; border:4px solid ${lineColor}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.3)"><img src="images/van.png" style="width:18px;"></div>`, 
+                                html: `<div style="width:34px; height:34px; background:white; border:4px solid ${markerBorder}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.3)" class="${isAlert ? 'blink' : ''}"><img src="images/van.png" style="width:18px;"></div>`, 
                                 className: '', iconSize:[34,34], iconAnchor:[17,17] 
                             }));
                             m.setOpacity(active ? 1 : 0.4);
@@ -244,6 +257,7 @@
             const devs = await res.json();
             const d = devs[0];
             d.attributes.hideClient = !val;
+            d.attributes.driverStatus = val ? "En service" : "Désactivé";
             await fetch(`${TRACCAR_URL}/api/devices/${id}`, { method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
             updateAdmin();
         }
