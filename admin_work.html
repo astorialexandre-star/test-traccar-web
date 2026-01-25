@@ -15,17 +15,27 @@
         :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --warning: #f39c12; --dark: #1a1a1a; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
         
-        /* HEADER & CARTES */
-        #admin-header { background: white; box-shadow: 0 2px 15px rgba(0,0,0,0.1); z-index: 1001; overflow-y: auto; max-height: 45vh; transition: all 0.4s; padding: 12px; position: relative; }
-        .header-collapsed { margin-top: -46vh; opacity: 0; pointer-events: none; }
-        #toggle-header { position: fixed; top: 45vh; left: 50%; transform: translateX(-50%); background: white; border: 1px solid #ddd; border-top: none; width: 80px; height: 30px; border-radius: 0 0 15px 15px; cursor: pointer; z-index: 1002; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.4s; }
+        /* --- HEADER & NAVIGATION --- */
+        #admin-header { 
+            background: white; box-shadow: 0 2px 15px rgba(0,0,0,0.1); z-index: 1001; 
+            overflow-y: auto; max-height: 45vh; transition: all 0.4s ease-in-out;
+            padding: 12px; position: relative;
+        }
+        .header-collapsed { margin-top: -46vh; padding-top: 0 !important; padding-bottom: 0 !important; opacity: 0; pointer-events: none; }
+
+        #toggle-header {
+            position: fixed; top: 45vh; left: 50%; transform: translateX(-50%);
+            background: white; border: 1px solid #ddd; border-top: none;
+            width: 80px; height: 30px; border-radius: 0 0 15px 15px;
+            cursor: pointer; z-index: 1002; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 18px; transition: all 0.4s ease-in-out;
+        }
         .btn-collapsed { top: 0 !important; }
 
-        /* MODALES */
+        /* --- MODALES & GESTION --- */
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 5000; align-items: center; justify-content: center; padding: 10px; }
         .modal-content { background: white; width: 100%; max-width: 550px; padding: 20px; border-radius: 15px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
-        
-        /* FORMULAIRES */
         .mgmt-card { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #eee; position: relative; }
         .mgmt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
         input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 100%; box-sizing: border-box; }
@@ -33,20 +43,38 @@
         .btn-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 18px; position: absolute; top: 10px; right: 10px; }
         .btn-ok { background: var(--success); color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 5px; }
 
-        /* CARTES NAVETTES */
-        .shuttle-card { width: 280px; background: #fff; border-radius: 12px; border: 2px solid #eee; overflow: hidden; }
-        .v-details { background: #f0f4f8; padding: 8px; border-radius: 6px; font-size: 11px; margin: 5px 0; border-left: 4px solid #005587; }
+        /* --- CARTES NAVETTES --- */
+        .line-section { margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #f0f0f0; }
+        .line-title { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 3px; margin-bottom: 8px; display: inline-block; color: white; text-transform: uppercase; }
+        .shuttle-flex-container { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; }
+        .shuttle-card { width: 280px; min-width: 280px; background: #fff; border-radius: 12px; border: 2px solid #eee; position: relative; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card-active { border: 2px solid var(--success) !important; }
+        .v-details { background: #f0f4f8; padding: 8px; border-radius: 6px; font-size: 11px; margin: 5px 0; border-left: 4px solid var(--primary); }
         .plate-box { font-family: monospace; background: white; padding: 1px 4px; border: 1px solid #ccc; font-weight: bold; }
 
+        /* --- MAP CONTROLS --- */
+        #map { flex-grow: 1; width: 100%; z-index: 1; position: relative; }
+        .map-controls { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 8px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 5px; }
+        .map-controls select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 13px; font-weight: bold; }
+        
+        .switch { position: relative; width: 40px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        input:checked + .slider { background-color: var(--success); }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider:before { transform: translateX(18px); }
+
         #pin-overlay { position: fixed; inset: 0; background: #1a1a1a; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
-        .num-btn { width: 70px; height: 70px; border-radius: 50%; border: none; background: #333; color: white; font-size: 24px; cursor: pointer; margin: 5px; }
+        .num-btn { width: 75px; height: 75px; border-radius: 50%; border: none; background: #333; color: white; font-size: 24px; cursor: pointer; margin: 5px; }
+        .blink { animation: blink-alert 0.6s infinite; }
+        @keyframes blink-alert { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
     <div id="pin-overlay">
         <h2>LOGISTIQUE 369</h2>
-        <div id="dots-display" style="font-size: 32px; margin-bottom: 20px;"></div>
+        <div id="dots-display" style="font-size: 32px; margin-bottom: 20px; letter-spacing: 10px;"></div>
         <div id="numpad">
             <div><button class="num-btn" onclick="pressNum('1')">1</button><button class="num-btn" onclick="pressNum('2')">2</button><button class="num-btn" onclick="pressNum('3')">3</button></div>
             <div><button class="num-btn" onclick="pressNum('4')">4</button><button class="num-btn" onclick="pressNum('5')">5</button><button class="num-btn" onclick="pressNum('6')">6</button></div>
@@ -60,41 +88,78 @@
             <h2 id="modal-title" style="margin-top:0; color:var(--primary)">Gestion</h2>
             <div id="modal-action-bar"></div>
             <div id="modal-list"></div>
-            <button onclick="closeModal()" style="margin-top:20px; width:100%; padding:12px; background:#666; color:white; border:none; border-radius:8px;">Fermer</button>
+            <button onclick="closeModal()" style="margin-top:20px; width:100%; padding:12px; background:#666; color:white; border:none; border-radius:8px; cursor:pointer;">Fermer</button>
         </div>
     </div>
 
     <div id="admin-header">
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <div style="font-weight:bold; color:var(--primary)">TABLEAU DE BORD ADMIN</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:2px solid #f0f0f0; padding-bottom:10px;">
+            <div style="font-weight:bold; color:var(--primary); font-size:18px;">ADMIN EXPERT</div>
             <div>
-                <button onclick="loadList('drivers')" style="padding:6px 12px; border-radius:5px; border:1px solid #ccc; cursor:pointer;">👥 Équipe</button>
-                <button onclick="loadList('fleet')" style="padding:6px 12px; border-radius:5px; border:1px solid #ccc; cursor:pointer; margin-left:5px;">🚐 Flotte</button>
+                <button onclick="loadList('drivers')" style="padding:8px 15px; border-radius:6px; background:#f0f0f0; border:1px solid #ddd; cursor:pointer; font-weight:bold;">👥 ÉQUIPE</button>
+                <button onclick="loadList('fleet')" style="padding:8px 15px; border-radius:6px; background:#f0f0f0; border:1px solid #ddd; cursor:pointer; font-weight:bold; margin-left:5px;">🚐 FLOTTE</button>
             </div>
         </div>
         <div id="shuttle-container"></div>
     </div>
     
     <button id="toggle-header" onclick="toggleHeader()">▲</button>
-    <div id="map" style="flex-grow:1;"></div>
+    
+    <div id="map">
+        <div class="map-controls">
+            <label style="font-size: 9px; font-weight: bold; color: #666; margin-left: 5px;">TRACÉ LIGNE</label>
+            <select id="circuit-selector" onchange="updateCircuitDisplay(this.value)">
+                <option value="all">🌐 Réseau Complet</option>
+                <option value="ligne1">🔵 Ligne 1</option>
+                <option value="ligne2">🟣 Ligne 2</option>
+                <option value="ligne3">🟠 Ligne 3</option>
+                <option value="none">❌ Aucun</option>
+            </select>
+        </div>
+    </div>
 
     <script>
         const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
+        let fleetMarkers = {};
+        let currentCircuitLayer = null;
         let isAuthorized = false;
         let enteredPin = "";
 
         const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
+        const markerClusterGroup = L.markerClusterGroup({ spiderfyOnMaxZoom: true, showCoverageOnHover: false, maxClusterRadius: 30 });
+        map.addLayer(markerClusterGroup);
+
+        const circuitConfigs = {
+            'all':    { file: 'circuit.json', color: '#333',    weight: 3, dash: '5,5', opacity: 0.4 },
+            'ligne1': { file: 'ligne1.json',  color: '#3498db', weight: 6, dash: null,  opacity: 0.7 },
+            'ligne2': { file: 'ligne2.json',  color: '#9b59b6', weight: 6, dash: null,  opacity: 0.7 },
+            'ligne3': { file: 'ligne3.json',  color: '#e67e22', weight: 6, dash: null,  opacity: 0.7 }
+        };
+
+        // --- GESTION TRACÉS ---
+        async function updateCircuitDisplay(type) {
+            if (currentCircuitLayer) map.removeLayer(currentCircuitLayer);
+            if (type === 'none') return;
+            const config = circuitConfigs[type];
+            try {
+                const res = await fetch(config.file);
+                const data = await res.json();
+                currentCircuitLayer = L.geoJSON(data, {
+                    style: { color: config.color, weight: config.weight, opacity: config.opacity, dashArray: config.dash, lineJoin: 'round' }
+                }).addTo(map);
+            } catch (e) { console.error("Erreur tracé:", e); }
+        }
+
+        // --- GESTION MODALES ---
         function closeModal() { document.getElementById('manager-modal').style.display = 'none'; }
 
-        // --- GESTION ÉQUIPE & FLOTTE ---
         async function loadList(type) {
             const list = document.getElementById('modal-list');
             const actionBar = document.getElementById('modal-action-bar');
-            const modal = document.getElementById('manager-modal');
-            modal.style.display = 'flex';
+            document.getElementById('manager-modal').style.display = 'flex';
             list.innerHTML = "Chargement...";
 
             if(type === 'drivers') {
@@ -120,12 +185,11 @@
                 list.innerHTML = data.map(d => `
                     <div class="mgmt-card">
                         <button class="btn-del" onclick="deleteItem('devices', ${d.id})">🗑️</button>
-                        <b>${d.name} (IMEI: ${d.uniqueId})</b>
                         <div class="mgmt-grid">
                             <input type="text" value="${d.name}" id="fn-${d.id}" placeholder="Nom">
-                            <input type="text" value="${d.attributes.modele || ''}" id="fm-${d.id}" placeholder="Modèle">
-                            <input type="text" value="${d.attributes.immatriculation || ''}" id="fi-${d.id}" placeholder="Immat">
                             <input type="text" value="${d.uniqueId}" id="fu-${d.id}" placeholder="IMEI">
+                            <input type="text" value="${d.attributes.modele || ''}" id="fm-${d.id}" placeholder="Modèle">
+                            <input type="text" value="${d.attributes.immatriculation || ''}" id="fi-${d.id}" placeholder="Immatriculation">
                         </div>
                         <button class="btn-ok" onclick="saveFleet(${d.id})">Enregistrer</button>
                     </div>
@@ -133,7 +197,6 @@
             }
         }
 
-        // --- ACTIONS API ---
         async function saveDriver(id) {
             const name = document.getElementById(`dn-${id}`).value;
             const pin = document.getElementById(`dp-${id}`).value;
@@ -141,7 +204,7 @@
                 method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, name, uniqueId: pin })
             });
-            alert("Chauffeur mis à jour");
+            alert("Mis à jour !");
         }
 
         async function saveFleet(id) {
@@ -155,12 +218,12 @@
                 method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
                 body: JSON.stringify(dev)
             });
-            alert("Véhicule mis à jour");
+            alert("Mis à jour !");
             updateAdmin();
         }
 
         async function deleteItem(type, id) {
-            if(confirm("Supprimer définitivement ?")) {
+            if(confirm("Confirmer la suppression ?")) {
                 await fetch(`${TRACCAR_URL}/api/${type}/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH } });
                 loadList(type === 'drivers' ? 'drivers' : 'fleet');
                 updateAdmin();
@@ -168,31 +231,31 @@
         }
 
         async function addDriverPrompt() {
-            const name = prompt("Nom du chauffeur :");
-            const pin = prompt("Code PIN :");
-            if(name && pin) {
-                await fetch(`${TRACCAR_URL}/api/drivers`, {
-                    method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, uniqueId: pin })
-                });
+            const n = prompt("Nom :"); const p = prompt("PIN :");
+            if(n && p) {
+                await fetch(`${TRACCAR_URL}/api/drivers`, { method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify({ name:n, uniqueId:p }) });
                 loadList('drivers');
             }
         }
 
         async function addFleetPrompt() {
-            const name = prompt("Nom de la navette (ex: Navette A) :");
-            const imei = prompt("IMEI (Identifiant Traccar) :");
-            if(name && imei) {
-                await fetch(`${TRACCAR_URL}/api/devices`, {
-                    method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, uniqueId: imei, attributes: {} })
-                });
+            const n = prompt("Nom :"); const i = prompt("IMEI :");
+            if(n && i) {
+                await fetch(`${TRACCAR_URL}/api/devices`, { method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify({ name:n, uniqueId:i, attributes:{} }) });
                 loadList('fleet');
                 updateAdmin();
             }
         }
 
-        // --- AFFICHAGE DASHBOARD ---
+        // --- DASHBOARD & MAP ---
+        function getLineColor(line) {
+            if (!line) return '#ccc';
+            if (line.includes('1')) return '#3498db';
+            if (line.includes('2')) return '#9b59b6';
+            if (line.includes('3')) return '#e67e22';
+            return '#ccc';
+        }
+
         async function updateAdmin() {
             if (!isAuthorized) return;
             try {
@@ -202,29 +265,68 @@
                 ]);
                 const devices = await resDev.json();
                 const positions = await resPos.json();
+                
                 const container = document.getElementById('shuttle-container');
-                container.innerHTML = "";
-
+                const groups = { "Ligne 1": [], "Ligne 2": [], "Ligne 3": [], "Hors Ligne": [] };
+                
                 devices.forEach(dev => {
-                    const active = !dev.attributes.hideClient;
-                    const card = document.createElement('div');
-                    card.style = "display:inline-block; margin:5px;";
-                    card.innerHTML = `
-                        <div class="shuttle-card" style="border-color:${active?'#2ecc71':'#eee'}">
-                            <div style="padding:10px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <b>${dev.name}</b>
-                                    <label class="switch"><input type="checkbox" ${active?'checked':''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
-                                </div>
-                                <div class="v-details">
-                                    🚐 ${dev.attributes.modele || '--'} | <span class="plate-box">${dev.attributes.immatriculation || '--'}</span><br>
-                                    👤 Chauffeur: <b>${dev.attributes.currentDriver || "Aucun"}</b>
-                                </div>
+                    const line = dev.attributes.assignedLine || "";
+                    if (line.includes("1")) groups["Ligne 1"].push(dev);
+                    else if (line.includes("2")) groups["Ligne 2"].push(dev);
+                    else if (line.includes("3")) groups["Ligne 3"].push(dev);
+                    else groups["Hors Ligne"].push(dev);
+                });
+
+                // On vide seulement les sections de navettes, pas les boutons de gestion
+                let htmlContent = "";
+                for (const [lineName, groupDevs] of Object.entries(groups)) {
+                    if (groupDevs.length === 0) continue;
+                    const color = getLineColor(lineName);
+                    htmlContent += `
+                        <div class="line-section">
+                            <div class="line-title" style="background:${color}">${lineName}</div>
+                            <div class="shuttle-flex-container">
+                                ${groupDevs.map(dev => {
+                                    const active = !dev.attributes.hideClient;
+                                    const pos = positions.find(p => p.deviceId === dev.id);
+                                    if(pos) updateMarker(dev, pos, color);
+                                    return `
+                                        <div class="shuttle-card ${active?'card-active':''}">
+                                            <div style="height:6px; background:${color}"></div>
+                                            <div style="padding:10px;">
+                                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                    <b>${dev.name}</b>
+                                                    <label class="switch"><input type="checkbox" ${active?'checked':''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
+                                                </div>
+                                                <div class="v-details">
+                                                    🚐 ${dev.attributes.modele || '--'} | <span class="plate-box">${dev.attributes.immatriculation || '--'}</span><br>
+                                                    👤 Chauffeur: <b>${dev.attributes.currentDriver || "Aucun"}</b>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
                             </div>
                         </div>`;
-                    container.appendChild(card);
-                });
-            } catch(e) {}
+                }
+                container.innerHTML = htmlContent;
+            } catch(e) { console.error(e); }
+        }
+
+        function updateMarker(dev, pos, color) {
+            if (!fleetMarkers[dev.id]) {
+                const marker = L.marker([pos.latitude, pos.longitude]);
+                marker.bindTooltip(dev.name, { direction: 'top' });
+                fleetMarkers[dev.id] = marker;
+                markerClusterGroup.addLayer(marker);
+            }
+            const m = fleetMarkers[dev.id];
+            m.setLatLng([pos.latitude, pos.longitude]);
+            m.setIcon(L.divIcon({ 
+                html: `<div style="width:34px; height:34px; background:white; border:4px solid ${color}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.3)"><img src="images/van.png" style="width:18px;"></div>`, 
+                className: '', iconSize:[34,34], iconAnchor:[17,17] 
+            }));
+            m.setOpacity(!dev.attributes.hideClient ? 1 : 0.4);
         }
 
         async function toggleDev(id, val) {
@@ -236,14 +338,17 @@
         }
 
         function toggleHeader() {
-            const h = document.getElementById('admin-header');
-            h.classList.toggle('header-collapsed');
-            document.getElementById('toggle-header').innerText = h.classList.contains('header-collapsed') ? "▼" : "▲";
+            const header = document.getElementById('admin-header');
+            const btn = document.getElementById('toggle-header');
+            header.classList.toggle('header-collapsed');
+            btn.classList.toggle('btn-collapsed');
+            btn.innerText = header.classList.contains('header-collapsed') ? "▼" : "▲";
+            setTimeout(() => { map.invalidateSize(); }, 450);
         }
 
         function pressNum(v) { if(enteredPin.length<4) { enteredPin+=v; updateDots(); if(enteredPin.length===4) setTimeout(checkPin,300); } }
         function updateDots() { document.getElementById('dots-display').innerText = "•".repeat(enteredPin.length); }
-        function checkPin() { if(enteredPin==="3690") { isAuthorized=true; document.getElementById('pin-overlay').style.display='none'; updateAdmin(); } else { enteredPin=""; updateDots(); } }
+        function checkPin() { if(enteredPin==="3690") { isAuthorized=true; document.getElementById('pin-overlay').style.display='none'; updateAdmin(); updateCircuitDisplay('all'); } else { enteredPin=""; updateDots(); } }
 
         setInterval(updateAdmin, 10000);
     </script>
