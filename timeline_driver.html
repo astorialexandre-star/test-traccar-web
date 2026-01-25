@@ -5,105 +5,175 @@
     <title>LOGS - Timeline Chauffeurs</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
-        :root { --primary: #005587; --success: #2ecc71; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        :root { --primary: #005587; --success: #2ecc71; --bg: #f4f7f6; --dark: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--dark); }
         .container { max-width: 800px; margin: 0 auto; }
-        h1 { color: var(--primary); text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
         
-        .controls { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 10px; align-items: center; justify-content: center; }
-        input[type="date"] { padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
-        button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .header-box { text-align: center; margin-bottom: 30px; }
+        h1 { color: var(--primary); margin-bottom: 5px; }
+        .subtitle { color: #666; font-size: 14px; }
+
+        .controls { 
+            background: white; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; 
+            display: flex; gap: 15px; align-items: flex-end; justify-content: center; flex-wrap: wrap;
+        }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 12px; font-weight: bold; color: var(--primary); text-transform: uppercase; }
+        
+        input[type="date"], select { 
+            padding: 10px; border: 1px solid #ddd; border-radius: 6px; 
+            font-size: 14px; background: #fff; min-width: 180px;
+        }
+
+        button { 
+            background: var(--primary); color: white; border: none; 
+            padding: 11px 25px; border-radius: 6px; cursor: pointer; 
+            font-weight: bold; transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
 
         .timeline { position: relative; padding: 20px 0; }
-        .timeline::before { content: ''; position: absolute; left: 31px; top: 0; bottom: 0; width: 4px; background: #ddd; }
+        .timeline::before { content: ''; position: absolute; left: 31px; top: 0; bottom: 0; width: 4px; background: #e0e6ed; }
 
-        .event-card { position: relative; margin-bottom: 20px; padding-left: 60px; }
-        .event-dot { position: absolute; left: 22px; top: 5px; width: 22px; height: 22px; background: var(--success); border: 4px solid white; border-radius: 50%; z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .event-card { position: relative; margin-bottom: 15px; padding-left: 60px; transition: transform 0.2s; }
+        .event-dot { 
+            position: absolute; left: 22px; top: 12px; width: 22px; height: 22px; 
+            background: var(--success); border: 4px solid white; border-radius: 50%; 
+            z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
         
-        .event-content { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
-        .event-time { font-size: 12px; color: #888; font-weight: bold; margin-bottom: 5px; }
-        .driver-name { font-size: 18px; font-weight: bold; color: var(--primary); }
-        .shuttle-name { font-size: 14px; background: #eee; padding: 2px 8px; border-radius: 4px; color: #555; }
-        .loading { text-align: center; padding: 20px; color: #666; }
+        .event-content { 
+            background: white; padding: 15px; border-radius: 10px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; 
+            justify-content: space-between; align-items: center; border-left: 5px solid var(--primary);
+        }
+        .event-time { font-family: monospace; font-size: 14px; color: var(--primary); font-weight: bold; }
+        .driver-info { display: flex; flex-direction: column; }
+        .driver-name { font-size: 16px; font-weight: bold; color: var(--dark); }
+        .shuttle-badge { 
+            font-size: 11px; background: #f0f4f8; padding: 4px 10px; 
+            border-radius: 20px; color: #555; font-weight: bold; border: 1px solid #d1d9e0;
+        }
+
+        .loading { text-align: center; padding: 40px; color: #888; font-style: italic; }
+        .no-data { text-align: center; padding: 40px; background: #fff; border-radius: 10px; border: 2px dashed #ccc; color: #666; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Timeline des Prises de Service</h1>
+    <div class="header-box">
+        <h1>LOGISTIQUE 369</h1>
+        <div class="subtitle">Historique des affectations chauffeurs</div>
+    </div>
     
     <div class="controls">
-        <input type="date" id="log-date">
-        <button onclick="fetchTimeline()">Afficher</button>
+        <div class="control-group">
+            <label>Date</label>
+            <input type="date" id="log-date">
+        </div>
+        <div class="control-group">
+            <label>Navette</label>
+            <select id="shuttle-select">
+                <option value="all">-- Toutes les navettes --</option>
+            </select>
+        </div>
+        <button onclick="fetchTimeline()">Actualiser</button>
     </div>
 
     <div id="timeline-container" class="timeline">
-        <div class="loading">Sélectionnez une date pour voir l'historique</div>
+        <div class="loading">Initialisation de la flotte...</div>
     </div>
 </div>
 
 <script>
     const TRACCAR_URL = 'https://369shuttles.duckdns.org';
     const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
+    
+    let allDevices = [];
+    let allDrivers = [];
 
-    // Régler la date sur aujourd'hui par défaut
-    document.getElementById('log-date').valueAsDate = new Date();
+    // Initialisation au chargement
+    window.onload = async () => {
+        document.getElementById('log-date').valueAsDate = new Date();
+        await loadInitialData();
+        fetchTimeline();
+    };
 
-    async function fetchTimeline() {
-        const container = document.getElementById('timeline-container');
-        const date = document.getElementById('log-date').value;
-        if (!date) return;
-
-        container.innerHTML = '<div class="loading">Analyse des rapports...</div>';
-
+    async function loadInitialData() {
         try {
-            // On récupère les infos nécessaires en parallèle
             const [resDev, resDriv] = await Promise.all([
                 fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
                 fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } })
             ]);
             
-            const devices = await resDev.json();
-            const drivers = await resDriv.json();
+            allDevices = await resDev.json();
+            allDrivers = await resDriv.json();
 
-            // On interroge les événements de type "driverChanged"
+            const select = document.getElementById('shuttle-select');
+            allDevices.sort((a,b) => a.name.localeCompare(b.name)).forEach(dev => {
+                const opt = document.createElement('option');
+                opt.value = dev.id;
+                opt.textContent = dev.name;
+                select.appendChild(opt);
+            });
+        } catch (e) {
+            console.error("Erreur d'initialisation", e);
+        }
+    }
+
+    async function fetchTimeline() {
+        const container = document.getElementById('timeline-container');
+        const date = document.getElementById('log-date').value;
+        const selectedId = document.getElementById('shuttle-select').value;
+        
+        container.innerHTML = '<div class="loading">Analyse des mouvements en cours...</div>';
+
+        try {
             const from = new Date(date + "T00:00:00Z").toISOString();
             const to = new Date(date + "T23:59:59Z").toISOString();
             
+            // On récupère les événements de changement de chauffeur
             const resEvents = await fetch(`${TRACCAR_URL}/api/reports/events?from=${from}&to=${to}&type=driverChanged`, {
                 headers: { 'Authorization': AUTH }
             });
-            const events = await resEvents.json();
+            let events = await resEvents.json();
+
+            // Filtrage par navette si spécifié
+            if (selectedId !== "all") {
+                events = events.filter(ev => ev.deviceId == selectedId);
+            }
 
             if (events.length === 0) {
-                container.innerHTML = '<div class="loading">Aucun changement de chauffeur enregistré pour cette journée.</div>';
+                container.innerHTML = '<div class="no-data">Aucun changement de chauffeur détecté pour ces critères.</div>';
                 return;
             }
 
-            // Tri par heure décroissante
+            // Tri chronologique inverse (plus récent en haut)
             events.sort((a, b) => new Date(b.eventTime) - new Date(a.eventTime));
 
             container.innerHTML = events.map(ev => {
-                const dev = devices.find(d => d.id === ev.deviceId);
-                const driv = drivers.find(dr => dr.id === ev.driverId);
+                const dev = allDevices.find(d => d.id === ev.deviceId);
+                const driv = allDrivers.find(dr => dr.uniqueId === ev.attributes.driverUniqueId || dr.id === ev.driverId);
                 const time = new Date(ev.eventTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
                 
                 return `
                     <div class="event-card">
                         <div class="event-dot"></div>
                         <div class="event-content">
-                            <div>
-                                <div class="event-time">🕒 ${time}</div>
+                            <div class="driver-info">
+                                <div class="event-time">${time}</div>
                                 <div class="driver-name">${driv ? driv.name : "Fin de service / Déconnexion"}</div>
                             </div>
-                            <div class="shuttle-name">🚐 ${dev ? dev.name : 'Inconnu'}</div>
+                            <div class="shuttle-badge">🚐 ${dev ? dev.name : 'Navette inconnue'}</div>
                         </div>
                     </div>
                 `;
             }).join('');
 
         } catch (e) {
-            container.innerHTML = '<div class="loading" style="color:red">Erreur lors de la récupération des données.</div>';
+            container.innerHTML = '<div class="no-data" style="color:red">Erreur de connexion au serveur Traccar.</div>';
         }
     }
 </script>
