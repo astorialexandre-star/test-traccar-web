@@ -14,6 +14,7 @@
         input, select { padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; }
         .btn-refresh { background: var(--primary); color: white; border: none; padding: 9px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         #chart_div { width: 100%; min-height: 450px; }
+        #status-msg { font-size: 12px; color: #666; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -31,6 +32,7 @@
     </div>
 
     <div id="chart_div"></div>
+    <div id="status-msg"></div>
 </div>
 
 <script>
@@ -58,32 +60,28 @@
 
     async function drawChart() {
         const container = document.getElementById('chart_div');
+        const status = document.getElementById('status-msg');
         const dateStr = document.getElementById('target-date').value;
         const startH = document.getElementById('start-time').value;
         const endH = document.getElementById('end-time').value;
         const selectedId = document.getElementById('shuttle-filter').value;
 
-        container.innerHTML = "Analyse des logs de connexion...";
+        container.innerHTML = "Scan des positions en cours...";
 
         try {
             const from = new Date(`${dateStr}T${startH}:00`).toISOString();
             const to = new Date(`${dateStr}T${endH}:00`).toISOString();
 
-            // 1. On récupère les événements et les référentiels
-            const [resDev, resDriv, resEv] = await Promise.all([
+            // On récupère tout ce qu'on peut
+            const [resDev, resPos] = await Promise.all([
                 fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
-                fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } }),
-                fetch(`${TRACCAR_URL}/api/reports/events?from=${from}&to=${to}&type=driverChanged`, { headers: { 'Authorization': AUTH } })
+                fetch(`${TRACCAR_URL}/api/positions?from=${from}&to=${to}`, { headers: { 'Authorization': AUTH } })
             ]);
 
             const devices = await resDev.json();
-            const drivers = await resDriv.json();
-            const events = await resEv.json();
+            const positions = await resPos.json();
 
-            if (events.length === 0) {
-                container.innerHTML = "Aucun mouvement de chauffeur enregistré sur cette période.";
-                return;
-            }
+            status.innerHTML = `Analyse de ${positions.length} points GPS...`;
 
             const dataTable = new google.visualization.DataTable();
             dataTable.addColumn({ type: 'string', id: 'Navette' });
@@ -94,34 +92,43 @@
 
             const rows = [];
 
-            // 2. Traitement des sessions par navette
             devices.forEach(dev => {
                 if (selectedId !== "all" && dev.id != selectedId) return;
 
-                const devEvents = events.filter(e => e.deviceId === dev.id).sort((a,b) => new Date(a.eventTime) - new Date(b.eventTime));
+                // On filtre les positions de CETTE navette
+                const devPos = positions.filter(p => p.deviceId === dev.id).sort((a,b) => new Date(a.deviceTime) - new Date(b.deviceTime));
                 
-                devEvents.forEach((ev, index) => {
-                    const driver = drivers.find(d => d.id === ev.driverId);
-                    const startTime = new Date(ev.eventTime);
+                let currentDriver = null;
+                let startTime = null;
+
+                devPos.forEach((p, index) => {
+                    // FORCE CHECK : On regarde partout où le chauffeur pourrait être caché
+                    let driverAtPos = p.attributes.currentDriver || p.attributes.driverName || p.attributes.chauffeur;
                     
-                    // La fin de la session est soit l'événement suivant, soit "maintenant" (ou l'heure de fin choisie)
-                    let endTime;
-                    if (index < devEvents.length - 1) {
-                        endTime = new Date(devEvents[index + 1].eventTime);
-                    } else {
-                        endTime = new Date(); // Session en cours
-                        const limit = new Date(`${dateStr}T${endH}:00`);
-                        if (endTime > limit) endTime = limit;
+                    // Si on ne trouve rien dans la position, on regarde si le Device a un chauffeur actuellement
+                    // et on l'applique aux points récents (dernière heure)
+                    if (!driverAtPos && dev.attributes.currentDriver) {
+                        const posTime = new Date(p.deviceTime);
+                        const now = new Date();
+                        if (now - posTime < 3600000) driverAtPos = dev.attributes.currentDriver;
                     }
 
-                    if (driver) {
-                        rows.push([dev.name, driver.name, getColor(dev), startTime, endTime]);
+                    if (driverAtPos !== currentDriver) {
+                        if (currentDriver && currentDriver !== "Aucun chauffeur") {
+                            rows.push([dev.name, currentDriver, getColor(dev), startTime, new Date(p.deviceTime)]);
+                        }
+                        currentDriver = driverAtPos;
+                        startTime = new Date(p.deviceTime);
+                    }
+                    
+                    if (index === devPos.length - 1 && currentDriver && currentDriver !== "Aucun chauffeur") {
+                        rows.push([dev.name, currentDriver, getColor(dev), startTime, new Date(p.deviceTime)]);
                     }
                 });
             });
 
             if (rows.length === 0) {
-                container.innerHTML = "Données insuffisantes pour générer le planning.";
+                container.innerHTML = "Aucune session chauffeur détectée. <br><small>Vérifiez que l'app chauffeur envoie bien le nom dans les attributs de position.</small>";
                 return;
             }
 
@@ -130,6 +137,7 @@
                 timeline: { showRowLabels: true, groupByRowLabel: true },
                 hAxis: { format: 'HH:mm' }
             });
+            status.innerHTML = "Audit terminé avec succès.";
 
         } catch (e) { container.innerHTML = "Erreur : " + e.message; }
     }
