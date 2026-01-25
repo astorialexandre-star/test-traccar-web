@@ -15,25 +15,11 @@
         :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --warning: #f39c12; --dark: #1a1a1a; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
         
-        /* --- HEADER & NAVIGATION --- */
-        #admin-header { 
-            background: white; box-shadow: 0 2px 15px rgba(0,0,0,0.1); z-index: 1001; 
-            overflow-y: auto; max-height: 45vh; transition: all 0.4s ease-in-out;
-            padding: 12px; position: relative;
-        }
-        .header-collapsed { margin-top: -46vh; padding-top: 0 !important; padding-bottom: 0 !important; opacity: 0; pointer-events: none; }
-
-        #toggle-header {
-            position: fixed; top: 45vh; left: 50%; transform: translateX(-50%);
-            background: white; border: 1px solid #ddd; border-top: none;
-            width: 80px; height: 30px; border-radius: 0 0 15px 15px;
-            cursor: pointer; z-index: 1002; display: flex; align-items: center;
-            justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            font-size: 18px; transition: all 0.4s ease-in-out;
-        }
+        #admin-header { background: white; box-shadow: 0 2px 15px rgba(0,0,0,0.1); z-index: 1001; overflow-y: auto; max-height: 45vh; transition: all 0.4s ease-in-out; padding: 12px; position: relative; }
+        .header-collapsed { margin-top: -46vh; opacity: 0; pointer-events: none; }
+        #toggle-header { position: fixed; top: 45vh; left: 50%; transform: translateX(-50%); background: white; border: 1px solid #ddd; border-top: none; width: 80px; height: 30px; border-radius: 0 0 15px 15px; cursor: pointer; z-index: 1002; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-size: 18px; transition: all 0.4s ease-in-out; }
         .btn-collapsed { top: 0 !important; }
 
-        /* --- MODALES & GESTION --- */
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 5000; align-items: center; justify-content: center; padding: 10px; }
         .modal-content { background: white; width: 100%; max-width: 550px; padding: 20px; border-radius: 15px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
         .mgmt-card { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #eee; position: relative; }
@@ -43,11 +29,10 @@
         .btn-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 18px; position: absolute; top: 10px; right: 10px; }
         .btn-ok { background: var(--success); color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 5px; }
 
-        /* --- CARTES NAVETTES --- */
         .line-section { margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #f0f0f0; }
         .line-title { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 3px; margin-bottom: 8px; display: inline-block; color: white; text-transform: uppercase; }
         .shuttle-flex-container { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; }
-        .shuttle-card { width: 280px; min-width: 280px; background: #fff; border-radius: 12px; border: 2px solid #eee; position: relative; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .shuttle-card { width: 280px; min-width: 280px; background: #fff; border-radius: 12px; border: 2px solid #eee; position: relative; overflow: hidden; }
         .card-active { border: 2px solid var(--success) !important; }
         .v-details { background: #f0f4f8; padding: 8px; border-radius: 6px; font-size: 11px; margin: 5px 0; border-left: 4px solid var(--primary); }
         .plate-box { font-family: monospace; background: white; padding: 1px 4px; border: 1px solid #ccc; font-weight: bold; }
@@ -64,6 +49,7 @@
 
         #pin-overlay { position: fixed; inset: 0; background: #1a1a1a; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
         .num-btn { width: 75px; height: 75px; border-radius: 50%; border: none; background: #333; color: white; font-size: 24px; cursor: pointer; margin: 5px; }
+        .stop-label { background: rgba(255,255,255,0.9); border: 1px solid #999; font-weight: bold; color: #333; border-radius: 4px; padding: 2px 5px; }
     </style>
 </head>
 <body>
@@ -128,21 +114,18 @@
         const markerClusterGroup = L.markerClusterGroup({ spiderfyOnMaxZoom: true, showCoverageOnHover: false, maxClusterRadius: 30 });
         map.addLayer(markerClusterGroup);
 
-        // --- AFFICHAGE DES 4 ARRÊTS CORRIGÉS ---
+        // --- RESTAURATION STRICTE DE TES ARRÊTS ---
         const stops = [
-            { name: "Village", coords: [45.8572, 6.6205], icon: "🅿️" },
-            { name: "L'Arboisie", coords: [45.8615, 6.6285], icon: "🏨" },
-            { name: "Mamie Megève", coords: [45.8635, 6.6320], icon: "🏠" },
-            { name: "Mont d'Arbois", coords: [45.8570, 6.6430], icon: "⛳" }
+            { name: "Village", coords: [45.8594, 6.6224], icon: "images/stop_village.svg" },
+            { name: "L'Arboisie", coords: [45.8615, 6.6322], icon: "images/stop_arboisie.svg" },
+            { name: "Mamie Megève", coords: [45.8642, 6.6348], icon: "images/stop_mamie.svg" },
+            { name: "Mont d'Arbois", coords: [45.8582, 6.6435], icon: "images/stop_arbois.svg" }
         ];
 
         stops.forEach(stop => {
             L.marker(stop.coords, {
-                icon: L.divIcon({
-                    html: `<div style="font-size:24px; filter:drop-shadow(0 2px 2px rgba(0,0,0,0.3))">${stop.icon}</div>`,
-                    className: '', iconSize: [30, 30], iconAnchor: [15, 15]
-                })
-            }).addTo(map).bindTooltip(stop.name, { permanent: true, direction: 'bottom', offset: [0, 10], className: 'stop-label' });
+                icon: L.icon({ iconUrl: stop.icon, iconSize: [36, 42], iconAnchor: [18, 42], popupAnchor: [0, -40] })
+            }).addTo(map).bindTooltip(stop.name, { permanent: true, direction: 'bottom', offset: [0, 5], className: 'stop-label' });
         });
 
         const circuitConfigs = {
@@ -162,7 +145,7 @@
                 currentCircuitLayer = L.geoJSON(data, {
                     style: { color: config.color, weight: config.weight, opacity: config.opacity, dashArray: config.dash, lineJoin: 'round' }
                 }).addTo(map);
-            } catch (e) { console.error("Erreur tracé:", e); }
+            } catch (e) {}
         }
 
         // --- GESTION MODALES & API ---
