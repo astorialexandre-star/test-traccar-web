@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>ADMIN Expert - 369 Shuttles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+    <style>
+        :root { --primary: #005587; --success: #2ecc71; --danger: #e74c3c; --warning: #f39c12; --dark: #1a1a1a; }
+        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* HEADER & CARTES */
+        #admin-header { background: white; box-shadow: 0 2px 15px rgba(0,0,0,0.1); z-index: 1001; overflow-y: auto; max-height: 45vh; transition: all 0.4s; padding: 12px; position: relative; }
+        .header-collapsed { margin-top: -46vh; opacity: 0; pointer-events: none; }
+        #toggle-header { position: fixed; top: 45vh; left: 50%; transform: translateX(-50%); background: white; border: 1px solid #ddd; border-top: none; width: 80px; height: 30px; border-radius: 0 0 15px 15px; cursor: pointer; z-index: 1002; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.4s; }
+        .btn-collapsed { top: 0 !important; }
+
+        /* MODALES */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 5000; align-items: center; justify-content: center; padding: 10px; }
+        .modal-content { background: white; width: 100%; max-width: 550px; padding: 20px; border-radius: 15px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
+        
+        /* FORMULAIRES */
+        .mgmt-card { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #eee; position: relative; }
+        .mgmt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 100%; box-sizing: border-box; }
+        .btn-add { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 20px; cursor: pointer; font-weight: bold; }
+        .btn-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 18px; position: absolute; top: 10px; right: 10px; }
+        .btn-ok { background: var(--success); color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 5px; }
+
+        /* CARTES NAVETTES */
+        .shuttle-card { width: 280px; background: #fff; border-radius: 12px; border: 2px solid #eee; overflow: hidden; }
+        .v-details { background: #f0f4f8; padding: 8px; border-radius: 6px; font-size: 11px; margin: 5px 0; border-left: 4px solid #005587; }
+        .plate-box { font-family: monospace; background: white; padding: 1px 4px; border: 1px solid #ccc; font-weight: bold; }
+
+        #pin-overlay { position: fixed; inset: 0; background: #1a1a1a; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        .num-btn { width: 70px; height: 70px; border-radius: 50%; border: none; background: #333; color: white; font-size: 24px; cursor: pointer; margin: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="pin-overlay">
+        <h2>LOGISTIQUE 369</h2>
+        <div id="dots-display" style="font-size: 32px; margin-bottom: 20px;"></div>
+        <div id="numpad">
+            <div><button class="num-btn" onclick="pressNum('1')">1</button><button class="num-btn" onclick="pressNum('2')">2</button><button class="num-btn" onclick="pressNum('3')">3</button></div>
+            <div><button class="num-btn" onclick="pressNum('4')">4</button><button class="num-btn" onclick="pressNum('5')">5</button><button class="num-btn" onclick="pressNum('6')">6</button></div>
+            <div><button class="num-btn" onclick="pressNum('7')">7</button><button class="num-btn" onclick="pressNum('8')">8</button><button class="num-btn" onclick="pressNum('9')">9</button></div>
+            <div><button class="num-btn" style="color:#f44" onclick="enteredPin=''; updateDots();">C</button><button class="num-btn" onclick="pressNum('0')">0</button><button class="num-btn" style="color:#2ecc71" onclick="checkPin()">OK</button></div>
+        </div>
+    </div>
+
+    <div id="manager-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title" style="margin-top:0; color:var(--primary)">Gestion</h2>
+            <div id="modal-action-bar"></div>
+            <div id="modal-list"></div>
+            <button onclick="closeModal()" style="margin-top:20px; width:100%; padding:12px; background:#666; color:white; border:none; border-radius:8px;">Fermer</button>
+        </div>
+    </div>
+
+    <div id="admin-header">
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <div style="font-weight:bold; color:var(--primary)">TABLEAU DE BORD ADMIN</div>
+            <div>
+                <button onclick="loadList('drivers')" style="padding:6px 12px; border-radius:5px; border:1px solid #ccc; cursor:pointer;">👥 Équipe</button>
+                <button onclick="loadList('fleet')" style="padding:6px 12px; border-radius:5px; border:1px solid #ccc; cursor:pointer; margin-left:5px;">🚐 Flotte</button>
+            </div>
+        </div>
+        <div id="shuttle-container"></div>
+    </div>
+    
+    <button id="toggle-header" onclick="toggleHeader()">▲</button>
+    <div id="map" style="flex-grow:1;"></div>
+
+    <script>
+        const TRACCAR_URL = 'https://369shuttles.duckdns.org'; 
+        const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
+        let isAuthorized = false;
+        let enteredPin = "";
+
+        const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        function closeModal() { document.getElementById('manager-modal').style.display = 'none'; }
+
+        // --- GESTION ÉQUIPE & FLOTTE ---
+        async function loadList(type) {
+            const list = document.getElementById('modal-list');
+            const actionBar = document.getElementById('modal-action-bar');
+            const modal = document.getElementById('manager-modal');
+            modal.style.display = 'flex';
+            list.innerHTML = "Chargement...";
+
+            if(type === 'drivers') {
+                document.getElementById('modal-title').innerText = "Gestion de l'Équipe";
+                actionBar.innerHTML = `<button class="btn-add" onclick="addDriverPrompt()">+ Ajouter un Chauffeur</button>`;
+                const res = await fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } });
+                const data = await res.json();
+                list.innerHTML = data.map(d => `
+                    <div class="mgmt-card">
+                        <button class="btn-del" onclick="deleteItem('drivers', ${d.id})">🗑️</button>
+                        <div class="mgmt-grid">
+                            <input type="text" value="${d.name}" id="dn-${d.id}" placeholder="Nom">
+                            <input type="text" value="${d.uniqueId}" id="dp-${d.id}" placeholder="Code PIN">
+                        </div>
+                        <button class="btn-ok" onclick="saveDriver(${d.id})">Enregistrer</button>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('modal-title').innerText = "Gestion de la Flotte";
+                actionBar.innerHTML = `<button class="btn-add" onclick="addFleetPrompt()">+ Ajouter une Navette</button>`;
+                const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
+                const data = await res.json();
+                list.innerHTML = data.map(d => `
+                    <div class="mgmt-card">
+                        <button class="btn-del" onclick="deleteItem('devices', ${d.id})">🗑️</button>
+                        <b>${d.name} (IMEI: ${d.uniqueId})</b>
+                        <div class="mgmt-grid">
+                            <input type="text" value="${d.name}" id="fn-${d.id}" placeholder="Nom">
+                            <input type="text" value="${d.attributes.modele || ''}" id="fm-${d.id}" placeholder="Modèle">
+                            <input type="text" value="${d.attributes.immatriculation || ''}" id="fi-${d.id}" placeholder="Immat">
+                            <input type="text" value="${d.uniqueId}" id="fu-${d.id}" placeholder="IMEI">
+                        </div>
+                        <button class="btn-ok" onclick="saveFleet(${d.id})">Enregistrer</button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // --- ACTIONS API ---
+        async function saveDriver(id) {
+            const name = document.getElementById(`dn-${id}`).value;
+            const pin = document.getElementById(`dp-${id}`).value;
+            await fetch(`${TRACCAR_URL}/api/drivers/${id}`, {
+                method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, name, uniqueId: pin })
+            });
+            alert("Chauffeur mis à jour");
+        }
+
+        async function saveFleet(id) {
+            const res = await fetch(`${TRACCAR_URL}/api/devices?id=${id}`, { headers: { 'Authorization': AUTH } });
+            const dev = (await res.json())[0];
+            dev.name = document.getElementById(`fn-${id}`).value;
+            dev.uniqueId = document.getElementById(`fu-${id}`).value;
+            dev.attributes.modele = document.getElementById(`fm-${id}`).value;
+            dev.attributes.immatriculation = document.getElementById(`fi-${id}`).value;
+            await fetch(`${TRACCAR_URL}/api/devices/${id}`, {
+                method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
+                body: JSON.stringify(dev)
+            });
+            alert("Véhicule mis à jour");
+            updateAdmin();
+        }
+
+        async function deleteItem(type, id) {
+            if(confirm("Supprimer définitivement ?")) {
+                await fetch(`${TRACCAR_URL}/api/${type}/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH } });
+                loadList(type === 'drivers' ? 'drivers' : 'fleet');
+                updateAdmin();
+            }
+        }
+
+        async function addDriverPrompt() {
+            const name = prompt("Nom du chauffeur :");
+            const pin = prompt("Code PIN :");
+            if(name && pin) {
+                await fetch(`${TRACCAR_URL}/api/drivers`, {
+                    method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, uniqueId: pin })
+                });
+                loadList('drivers');
+            }
+        }
+
+        async function addFleetPrompt() {
+            const name = prompt("Nom de la navette (ex: Navette A) :");
+            const imei = prompt("IMEI (Identifiant Traccar) :");
+            if(name && imei) {
+                await fetch(`${TRACCAR_URL}/api/devices`, {
+                    method: 'POST', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, uniqueId: imei, attributes: {} })
+                });
+                loadList('fleet');
+                updateAdmin();
+            }
+        }
+
+        // --- AFFICHAGE DASHBOARD ---
+        async function updateAdmin() {
+            if (!isAuthorized) return;
+            try {
+                const [resDev, resPos] = await Promise.all([
+                    fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
+                    fetch(`${TRACCAR_URL}/api/positions`, { headers: { 'Authorization': AUTH } })
+                ]);
+                const devices = await resDev.json();
+                const positions = await resPos.json();
+                const container = document.getElementById('shuttle-container');
+                container.innerHTML = "";
+
+                devices.forEach(dev => {
+                    const active = !dev.attributes.hideClient;
+                    const card = document.createElement('div');
+                    card.style = "display:inline-block; margin:5px;";
+                    card.innerHTML = `
+                        <div class="shuttle-card" style="border-color:${active?'#2ecc71':'#eee'}">
+                            <div style="padding:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <b>${dev.name}</b>
+                                    <label class="switch"><input type="checkbox" ${active?'checked':''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
+                                </div>
+                                <div class="v-details">
+                                    🚐 ${dev.attributes.modele || '--'} | <span class="plate-box">${dev.attributes.immatriculation || '--'}</span><br>
+                                    👤 Chauffeur: <b>${dev.attributes.currentDriver || "Aucun"}</b>
+                                </div>
+                            </div>
+                        </div>`;
+                    container.appendChild(card);
+                });
+            } catch(e) {}
+        }
+
+        async function toggleDev(id, val) {
+            const res = await fetch(`${TRACCAR_URL}/api/devices?id=${id}`, { headers: { 'Authorization': AUTH } });
+            const d = (await res.json())[0];
+            d.attributes.hideClient = !val;
+            await fetch(`${TRACCAR_URL}/api/devices/${id}`, { method: 'PUT', headers: { 'Authorization': AUTH, 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            updateAdmin();
+        }
+
+        function toggleHeader() {
+            const h = document.getElementById('admin-header');
+            h.classList.toggle('header-collapsed');
+            document.getElementById('toggle-header').innerText = h.classList.contains('header-collapsed') ? "▼" : "▲";
+        }
+
+        function pressNum(v) { if(enteredPin.length<4) { enteredPin+=v; updateDots(); if(enteredPin.length===4) setTimeout(checkPin,300); } }
+        function updateDots() { document.getElementById('dots-display').innerText = "•".repeat(enteredPin.length); }
+        function checkPin() { if(enteredPin==="3690") { isAuthorized=true; document.getElementById('pin-overlay').style.display='none'; updateAdmin(); } else { enteredPin=""; updateDots(); } }
+
+        setInterval(updateAdmin, 10000);
+    </script>
+</body>
+</html>
