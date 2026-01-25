@@ -151,6 +151,7 @@
                 const devs = await res.json();
                 const d = devs[0];
                 d.attributes.currentDriver = "";
+                d.attributes.driverUniqueId = ""; // Nettoyage de l'ID
                 d.attributes.assignedLine = ""; 
                 d.attributes.hideClient = true;
                 d.attributes.driverStatus = "Libéré";
@@ -184,12 +185,13 @@
             currentDeviceId = devId;
             currentDriverName = driverNameFromPin;
             
-            // --- MODIFICATION ICI : ON GARDE LE STATUT SI EXISTANT ---
             const existingStatus = d.attributes.driverStatus;
             d.attributes.currentDriver = currentDriverName;
+            // --- MODIFICATION CRUCIALE POUR L'HISTORIQUE ---
+            d.attributes.driverUniqueId = pinInput; 
+            // ----------------------------------------------
             d.attributes.assignedLine = lineChosen; 
             
-            // Si pas de statut valide ou si c'était "Libéré/Hors service", on met "En service"
             if (!existingStatus || existingStatus === "Hors service" || existingStatus === "Libéré") {
                 d.attributes.driverStatus = "En service";
                 d.attributes.hideClient = false;
@@ -308,6 +310,7 @@
                 const devs = await res.json();
                 const d = devs[0];
                 d.attributes.currentDriver = "";
+                d.attributes.driverUniqueId = ""; // Déconnexion propre
                 d.attributes.assignedLine = ""; 
                 d.attributes.hideClient = true;
                 d.attributes.driverStatus = "Hors service";
