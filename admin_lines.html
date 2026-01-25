@@ -49,7 +49,7 @@
         .line-ribbon { width: 100%; height: 6px; }
         .card-content { padding: 10px; }
         .v-details { background: #f0f4f8; padding: 6px 10px; border-radius: 6px; margin: 8px 0; font-size: 11px; color: #444; border-left: 4px solid #cbd5e0; }
-        .status-badge { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px; border-radius: 6px; font-size: 12px; font-weight: bold; margin-bottom: 8px; }
+        .status-badge { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: bold; margin-bottom: 5px; text-align: center; }
         .status-online { background: #e8f8f0; color: #1e7e34; }
         .status-offline { background: #f8f9fa; color: #6c757d; }
 
@@ -207,16 +207,14 @@
                         const isTrafic = statusChauffeur.includes("Trafic");
                         const isAlert = isAccident || isTrafic;
 
-                        let ribbonColor = lineColor;
                         let statusClass = active ? 'status-online' : 'status-offline';
-                        
-                        if (isAccident) { ribbonColor = "#e74c3c"; statusClass = "status-accident blink"; }
-                        else if (isTrafic) { ribbonColor = "#f39c12"; statusClass = "status-trafic blink"; }
+                        if (isAccident) { statusClass = "status-accident blink"; }
+                        else if (isTrafic) { statusClass = "status-trafic blink"; }
 
                         const card = document.createElement('div');
                         card.className = `shuttle-card ${active ? 'card-active' : ''}`;
                         card.innerHTML = `
-                            <div class="line-ribbon ${isAlert ? 'blink' : ''}" style="background:${ribbonColor}"></div>
+                            <div class="line-ribbon" style="background:${lineColor}"></div>
                             <div class="card-content">
                                 <div style="display:flex; justify-content:space-between;">
                                     <b>${dev.name}</b>
@@ -238,7 +236,7 @@
                             }
                             const m = fleetMarkers[dev.id];
                             m.setLatLng([pos.latitude, pos.longitude]);
-                            const markerBorder = isAlert ? ribbonColor : lineColor;
+                            const markerBorder = isAccident ? "#e74c3c" : (isTrafic ? "#f39c12" : lineColor);
                             m.setIcon(L.divIcon({ 
                                 html: `<div style="width:34px; height:34px; background:white; border:4px solid ${markerBorder}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.3)" class="${isAlert ? 'blink' : ''}"><img src="images/van.png" style="width:18px;"></div>`, 
                                 className: '', iconSize:[34,34], iconAnchor:[17,17] 
