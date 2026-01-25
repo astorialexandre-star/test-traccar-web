@@ -34,6 +34,12 @@
         .shuttle-flex-container { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; }
         .shuttle-card { width: 280px; min-width: 280px; background: #fff; border-radius: 12px; border: 2px solid #eee; position: relative; overflow: hidden; }
         .card-active { border: 2px solid var(--success) !important; }
+        
+        /* --- BANDEAU STATUT --- */
+        .status-bar { font-size: 10px; font-weight: bold; text-align: center; padding: 3px 0; text-transform: uppercase; color: white; letter-spacing: 1px; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .status-blink { animation: blink 0.8s infinite; }
+
         .v-details { background: #f0f4f8; padding: 8px; border-radius: 6px; font-size: 11px; margin: 5px 0; border-left: 4px solid var(--primary); }
         .plate-box { font-family: monospace; background: white; padding: 1px 4px; border: 1px solid #ccc; font-weight: bold; }
 
@@ -113,7 +119,6 @@
         const markerClusterGroup = L.markerClusterGroup({ spiderfyOnMaxZoom: true, showCoverageOnHover: false, maxClusterRadius: 30 });
         map.addLayer(markerClusterGroup);
 
-        // --- BLOC HOTELS (STRICTEMENT REPRIS) ---
         const hotels = [
             { name: "Mamie Megève", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
             { name: "Mont d'Arbois", coords: [45.8542, 6.6317], icon: "images/logomontdarbois.png" },
@@ -146,7 +151,6 @@
             } catch (e) {}
         }
 
-        // --- FONCTIONS ADMIN & API ---
         function closeModal() { document.getElementById('manager-modal').style.display = 'none'; }
 
         async function loadList(type) {
@@ -257,13 +261,25 @@
                     if (groupDevs.length === 0) continue;
                     const color = (lineName === "Ligne 1") ? "#3498db" : (lineName === "Ligne 2") ? "#9b59b6" : (lineName === "Ligne 3") ? "#e67e22" : "#ccc";
                     htmlContent += `<div class="line-section"><div class="line-title" style="background:${color}">${lineName}</div><div class="shuttle-flex-container">`;
+                    
                     groupDevs.forEach(dev => {
                         const active = !dev.attributes.hideClient;
+                        const status = dev.attributes.driverStatus || "En service";
                         const pos = positions.find(p => p.deviceId === dev.id);
                         if(pos) updateMarker(dev, pos, color);
+
+                        // Gestion des styles du bandeau
+                        let statusColor = "var(--success)";
+                        let isBlinking = "";
+                        if (status.includes("Trafic")) { statusColor = "var(--warning)"; isBlinking = "status-blink"; }
+                        if (status.includes("Accident")) { statusColor = "var(--danger)"; isBlinking = "status-blink"; }
+                        if (status.includes("Plein") || status.includes("Pause")) statusColor = "var(--primary)";
+                        if (status === "Hors service") statusColor = "#666";
+
                         htmlContent += `
                             <div class="shuttle-card ${active?'card-active':''}">
                                 <div style="height:6px; background:${color}"></div>
+                                <div class="status-bar ${isBlinking}" style="background:${statusColor}">${status}</div>
                                 <div style="padding:10px;">
                                     <div style="display:flex; justify-content:space-between; align-items:center;">
                                         <b>${dev.name}</b>
