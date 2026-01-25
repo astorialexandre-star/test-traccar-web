@@ -2,37 +2,56 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>369 - Planning Opérationnel</title>
+    <title>369 - Planning Expert</title>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
         :root { --primary: #005587; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 1300px; margin: 0 auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
-        #chart_div { width: 100%; height: 600px; }
-        .legend { display: flex; gap: 20px; font-size: 12px; margin-bottom: 10px; justify-content: flex-end; }
-        .legend-item { display: flex; align-items: center; gap: 5px; }
-        .dot { width: 12px; height: 12px; border-radius: 3px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        
+        .filter-bar { 
+            display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; 
+            background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px;
+            border: 1px solid #eee;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 11px; font-weight: bold; color: var(--primary); text-transform: uppercase; }
+        
+        input, select { padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; }
+        .btn-refresh { background: var(--primary); color: white; border: none; padding: 9px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        
+        #chart_div { width: 100%; min-height: 400px; }
+        .loading-text { text-align: center; padding: 50px; color: #666; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h2 style="color:var(--primary); margin:0;">🗓️ PLANNING DES ROTATIONS</h2>
-        <div>
-            <input type="date" id="target-date" style="padding:8px; border-radius:5px; border:1px solid #ddd;">
-            <button onclick="drawChart()" style="background:var(--primary); color:white; border:none; padding:9px 20px; border-radius:5px; cursor:pointer; font-weight:bold;">Actualiser</button>
+    <h2 style="color:var(--primary); margin: 0 0 15px 0;">🗓️ AUDIT DES ROTATIONS</h2>
+    
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>Navette</label>
+            <select id="shuttle-filter">
+                <option value="all">-- Toutes les navettes --</option>
+            </select>
         </div>
+        <div class="filter-group">
+            <label>Date</label>
+            <input type="date" id="target-date">
+        </div>
+        <div class="filter-group">
+            <label>De (Heure)</label>
+            <input type="time" id="start-time" value="06:00">
+        </div>
+        <div class="filter-group">
+            <label>À (Heure)</label>
+            <input type="time" id="end-time" value="23:30">
+        </div>
+        <button class="btn-refresh" onclick="drawChart()">Actualiser</button>
     </div>
 
-    <div class="legend">
-        <div class="legend-item"><div class="dot" style="background:#3498db"></div> Ligne 1</div>
-        <div class="legend-item"><div class="dot" style="background:#9b59b6"></div> Ligne 2</div>
-        <div class="legend-item"><div class="dot" style="background:#e67e22"></div> Ligne 3</div>
-    </div>
-
-    <div id="chart_div"></div>
+    <div id="chart_div"><div class="loading-text">Initialisation...</div></div>
 </div>
 
 <script>
@@ -40,35 +59,73 @@
     const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
     
     google.charts.load('current', {'packages':['timeline'], 'language': 'fr'});
-    document.getElementById('target-date').valueAsDate = new Date();
+    
+    // Initialisation par défaut
+    window.onload = async () => {
+        document.getElementById('target-date').valueAsDate = new Date();
+        await populateShuttles();
+        drawChart();
+    };
+
+    async function populateShuttles() {
+        try {
+            const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
+            const devices = await res.json();
+            const select = document.getElementById('shuttle-filter');
+            devices.sort((a,b) => a.name.localeCompare(b.name)).forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name;
+                select.appendChild(opt);
+            });
+        } catch(e) { console.error("Erreur flotte:", e); }
+    }
 
     async function drawChart() {
+        const container = document.getElementById('chart_div');
+        const dateStr = document.getElementById('target-date').value;
+        const startH = document.getElementById('start-time').value;
+        const endH = document.getElementById('end-time').value;
+        const selectedId = document.getElementById('shuttle-filter').value;
+
+        container.innerHTML = '<div class="loading-text">Analyse des données en cours...</div>';
+
         try {
-            const dateStr = document.getElementById('target-date').value;
+            const from = `${dateStr}T${startH}:00Z`;
+            const to = `${dateStr}T${endH}:00Z`;
+
             const [resDev, resPos] = await Promise.all([
                 fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
-                fetch(`${TRACCAR_URL}/api/positions?from=${dateStr}T00:00:00Z&to=${dateStr}T23:59:59Z`, { headers: { 'Authorization': AUTH } })
+                fetch(`${TRACCAR_URL}/api/positions?from=${from}&to=${to}`, { headers: { 'Authorization': AUTH } })
             ]);
 
             const devices = await resDev.json();
-            const positions = await resPos.json();
-            const container = document.getElementById('chart_div');
+            let positions = await resPos.json();
+
+            // Filtrage par navette si nécessaire
+            if (selectedId !== "all") {
+                positions = positions.filter(p => p.deviceId == selectedId);
+            }
+
+            if (positions.length === 0) {
+                container.innerHTML = '<div class="loading-text">Aucune donnée sur cette période.</div>';
+                return;
+            }
+
             const chart = new google.visualization.Timeline(container);
             const dataTable = new google.visualization.DataTable();
-
             dataTable.addColumn({ type: 'string', id: 'Navette' });
             dataTable.addColumn({ type: 'string', id: 'Chauffeur' });
-            dataTable.addColumn({ type: 'string', role: 'style' }); // Ajout du style pour les couleurs
+            dataTable.addColumn({ type: 'string', role: 'style' });
             dataTable.addColumn({ type: 'date', id: 'Début' });
             dataTable.addColumn({ type: 'date', id: 'Fin' });
 
             const rows = [];
-            const now = new Date();
+            const activeDevices = (selectedId === "all") ? devices : devices.filter(d => d.id == selectedId);
 
-            devices.forEach(dev => {
+            activeDevices.forEach(dev => {
                 const devPos = positions.filter(p => p.deviceId === dev.id).sort((a,b) => new Date(a.deviceTime) - new Date(b.deviceTime));
                 
-                // 1. Gestion de l'historique (via positions)
                 let currentDriver = null;
                 let startTime = null;
 
@@ -85,35 +142,27 @@
                     }
                     
                     if (index === devPos.length - 1 && currentDriver && currentDriver !== "Aucun chauffeur") {
-                        // On termine la barre à l'heure du dernier point ou à "maintenant" si c'est aujourd'hui
-                        const endTime = (dateStr === now.toISOString().split('T')[0]) ? now : timeAtPos;
-                        rows.push([dev.name, currentDriver, getColor(dev), startTime, endTime]);
+                        rows.push([dev.name, currentDriver, getColor(dev), startTime, timeAtPos]);
                     }
                 });
-
-                // 2. Ajout du temps réel (Si Laura est logguée actuellement sur OBS 1)
-                const liveDriver = dev.attributes.currentDriver;
-                if (liveDriver && liveDriver !== "Aucun chauffeur" && dateStr === now.toISOString().split('T')[0]) {
-                    // Si le dernier segment de l'historique n'est pas déjà Laura, on l'ajoute
-                    const lastRow = rows.filter(r => r[0] === dev.name).pop();
-                    if (!lastRow || lastRow[1] !== liveDriver) {
-                        rows.push([dev.name, liveDriver, getColor(dev), new Date(now.getTime() - 1000*60*5), now]); 
-                    }
-                }
             });
 
             if (rows.length === 0) {
-                container.innerHTML = "<div style='text-align:center; padding:50px;'>Aucune activité chauffeur enregistrée pour cette journée.</div>";
+                container.innerHTML = '<div class="loading-text">Aucune vacation chauffeur trouvée sur ce créneau.</div>';
                 return;
             }
 
             dataTable.addRows(rows);
             chart.draw(dataTable, {
                 timeline: { showRowLabels: true, groupByRowLabel: true },
-                hAxis: { format: 'HH:mm' }
+                hAxis: { 
+                    format: 'HH:mm',
+                    minValue: new Date(`${dateStr}T${startH}:00`),
+                    maxValue: new Date(`${dateStr}T${endH}:00`)
+                }
             });
 
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); container.innerHTML = "Erreur de chargement."; }
     }
 
     function getColor(dev) {
