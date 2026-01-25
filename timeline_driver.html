@@ -2,144 +2,124 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>LOGS - Timeline Chauffeurs</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>369 - Planning Opérationnel</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
-        :root { --primary: #005587; --success: #2ecc71; --bg: #f4f7f6; --dark: #333; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--dark); }
-        .container { max-width: 800px; margin: 0 auto; }
-        .header-box { text-align: center; margin-bottom: 30px; }
-        h1 { color: var(--primary); margin-bottom: 5px; }
-        .controls { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; display: flex; gap: 15px; align-items: flex-end; justify-content: center; flex-wrap: wrap; }
-        .control-group { display: flex; flex-direction: column; gap: 5px; }
-        label { font-size: 11px; font-weight: bold; color: var(--primary); text-transform: uppercase; }
-        input[type="date"], select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; min-width: 180px; }
-        button { background: var(--primary); color: white; border: none; padding: 11px 25px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .timeline { position: relative; padding: 20px 0; }
-        .timeline::before { content: ''; position: absolute; left: 31px; top: 0; bottom: 0; width: 4px; background: #e0e6ed; }
-        .event-card { position: relative; margin-bottom: 15px; padding-left: 60px; }
-        .event-dot { position: absolute; left: 22px; top: 12px; width: 22px; height: 22px; background: var(--success); border: 4px solid white; border-radius: 50%; z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .event-content { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary); }
-        .event-time { font-family: monospace; font-size: 14px; color: var(--primary); font-weight: bold; }
-        .driver-name { font-size: 16px; font-weight: bold; }
-        .shuttle-badge { font-size: 11px; background: #f0f4f8; padding: 4px 10px; border-radius: 20px; color: #555; font-weight: bold; }
-        .loading { text-align: center; padding: 40px; color: #888; }
+        :root { --primary: #005587; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        .controls { display: flex; gap: 10px; align-items: center; }
+        input[type="date"] { padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #chart_div { width: 100%; height: 500px; }
+        .loading-overlay { display: none; text-align: center; padding: 50px; font-style: italic; color: #666; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header-box">
-        <h1>LOGISTIQUE 369</h1>
-        <div class="subtitle">Analyse des sessions chauffeurs (via positions)</div>
-    </div>
-    
-    <div class="controls">
-        <div class="control-group">
-            <label>Date</label>
-            <input type="date" id="log-date">
+    <div class="header">
+        <h2 style="color:var(--primary); margin:0;">📊 PLANNING DES ROTATIONS</h2>
+        <div class="controls">
+            <input type="date" id="target-date">
+            <button onclick="drawChart()">Actualiser</button>
         </div>
-        <div class="control-group">
-            <label>Navette</label>
-            <select id="shuttle-select">
-                <option value="">-- Choisir une navette --</option>
-            </select>
-        </div>
-        <button onclick="fetchTimeline()">Analyser</button>
     </div>
 
-    <div id="timeline-container" class="timeline">
-        <div class="loading">Sélectionnez une navette et une date pour lancer l'analyse.</div>
-    </div>
+    <div id="loading" class="loading-overlay">Analyse des données Traccar en cours...</div>
+    <div id="chart_div"></div>
 </div>
 
 <script>
     const TRACCAR_URL = 'https://369shuttles.duckdns.org';
     const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
     
-    let allDevices = [];
+    google.charts.load('current', {'packages':['timeline'], 'language': 'fr'});
+    
+    document.getElementById('target-date').valueAsDate = new Date();
 
-    window.onload = async () => {
-        document.getElementById('log-date').valueAsDate = new Date();
-        await loadDevices();
-    };
-
-    async function loadDevices() {
-        try {
-            const res = await fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } });
-            allDevices = await res.json();
-            const select = document.getElementById('shuttle-select');
-            allDevices.sort((a,b) => a.name.localeCompare(b.name)).forEach(dev => {
-                const opt = document.createElement('option');
-                opt.value = dev.id;
-                opt.textContent = dev.name;
-                select.appendChild(opt);
-            });
-        } catch (e) { console.error(e); }
-    }
-
-    async function fetchTimeline() {
-        const container = document.getElementById('timeline-container');
-        const date = document.getElementById('log-date').value;
-        const deviceId = document.getElementById('shuttle-select').value;
+    async function drawChart() {
+        const dateStr = document.getElementById('target-date').value;
+        const loader = document.getElementById('loading');
+        const chartDiv = document.getElementById('chart_div');
         
-        if (!deviceId) { alert("Sélectionnez une navette"); return; }
-        
-        container.innerHTML = '<div class="loading">Analyse approfondie des positions (ceci peut prendre 10s)...</div>';
+        loader.style.display = 'block';
+        chartDiv.style.opacity = '0.3';
 
         try {
-            const from = new Date(date + "T00:00:00Z").toISOString();
-            const to = new Date(date + "T23:59:59Z").toISOString();
-            
-            // On récupère TOUTES les positions de la navette pour la journée
-            const resPos = await fetch(`${TRACCAR_URL}/api/positions?deviceId=${deviceId}&from=${from}&to=${to}`, {
-                headers: { 'Authorization': AUTH }
-            });
+            const [resDev, resPos] = await Promise.all([
+                fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
+                fetch(`${TRACCAR_URL}/api/positions?from=${dateStr}T00:00:00Z&to=${dateStr}T23:59:59Z`, { headers: { 'Authorization': AUTH } })
+            ]);
+
+            const devices = await resDev.json();
             const positions = await resPos.json();
 
             if (positions.length === 0) {
-                container.innerHTML = '<div class="loading">Aucune donnée de position pour cette journée.</div>';
+                alert("Aucune donnée pour cette journée.");
+                loader.style.display = 'none';
                 return;
             }
 
-            // Algorithme de détection de changement
-            let history = [];
-            let lastDriver = null;
+            const container = document.getElementById('chart_div');
+            const chart = new google.visualization.Timeline(container);
+            const dataTable = new google.visualization.DataTable();
 
-            // On parcourt chronologiquement
-            positions.sort((a, b) => new Date(a.deviceTime) - new Date(b.deviceTime));
+            dataTable.addColumn({ type: 'string', id: 'Navette' });
+            dataTable.addColumn({ type: 'string', id: 'Chauffeur' });
+            dataTable.addColumn({ type: 'date', id: 'Début' });
+            dataTable.addColumn({ type: 'date', id: 'Fin' });
 
-            positions.forEach(pos => {
-                const currentDriver = pos.attributes.currentDriver || "Aucun chauffeur";
-                if (currentDriver !== lastDriver) {
-                    history.push({
-                        time: pos.deviceTime,
-                        driver: currentDriver,
-                        deviceName: allDevices.find(d => d.id == deviceId).name
-                    });
-                    lastDriver = currentDriver;
-                }
+            const rows = [];
+            
+            // Groupement des positions par Navette
+            const devIds = [...new Set(positions.map(p => p.deviceId))];
+
+            devIds.forEach(dId => {
+                const devName = devices.find(d => d.id === dId)?.name || `ID: ${dId}`;
+                const devPos = positions.filter(p => p.deviceId === dId).sort((a,b) => new Date(a.deviceTime) - new Date(b.deviceTime));
+
+                let currentDriver = null;
+                let startTime = null;
+
+                devPos.forEach((p, index) => {
+                    const driverAtPos = p.attributes.currentDriver || "Sans Chauffeur";
+                    const timeAtPos = new Date(p.deviceTime);
+
+                    if (driverAtPos !== currentDriver) {
+                        if (currentDriver !== null) {
+                            rows.push([devName, currentDriver, startTime, timeAtPos]);
+                        }
+                        currentDriver = driverAtPos;
+                        startTime = timeAtPos;
+                    }
+                    
+                    // Si c'est le dernier point de la journée pour cette navette
+                    if (index === devPos.length - 1 && currentDriver !== null) {
+                        rows.push([devName, currentDriver, startTime, timeAtPos]);
+                    }
+                });
             });
 
-            // Affichage (plus récent en haut)
-            container.innerHTML = history.reverse().map(event => {
-                const time = new Date(event.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-                return `
-                    <div class="event-card">
-                        <div class="event-dot"></div>
-                        <div class="event-content">
-                            <div>
-                                <div class="event-time">${time}</div>
-                                <div class="driver-name">${event.driver}</div>
-                            </div>
-                            <div class="shuttle-badge">🚐 ${event.deviceName}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            dataTable.addRows(rows);
+
+            const options = {
+                timeline: { 
+                    showRowLabels: true,
+                    groupByRowLabel: true,
+                    colorByRowLabel: false
+                },
+                avoidOverlappingGridLines: false
+            };
+
+            chart.draw(dataTable, options);
+            loader.style.display = 'none';
+            chartDiv.style.opacity = '1';
 
         } catch (e) {
-            container.innerHTML = '<div class="loading" style="color:red">Erreur lors de l\'analyse.</div>';
+            console.error(e);
+            loader.innerHTML = "Erreur de chargement des données.";
         }
     }
 </script>
