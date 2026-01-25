@@ -13,12 +13,12 @@
         body { 
             margin: 0; 
             padding: 20px; 
-            padding-bottom: calc(20px + env(safe-area-inset-bottom)); /* Sécurité pour Android/iOS */
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
             font-family: 'Segoe UI', sans-serif; 
             background: var(--bg); color: var(--text); box-sizing: border-box;
             display: flex; flex-direction: column; 
             height: 100vh; 
-            height: 100dvh; /* Utilise toute la hauteur dynamique disponible */
+            height: 100dvh; 
             overflow: hidden;
         }
 
@@ -143,7 +143,6 @@
             
             if (!pinInput) { alert("Saisissez votre PIN chauffeur pour libérer la navette."); return; }
 
-            // Vérifier si le PIN est celui de l'admin ou d'un chauffeur valide
             const resD = await fetch(`${TRACCAR_URL}/api/drivers`, { headers: { 'Authorization': AUTH } });
             const drivers = await resD.json();
             const isValidUser = drivers.some(d => d.uniqueId === pinInput) || pinInput === "3690";
@@ -228,6 +227,15 @@
                 const shouldBeVisible = !d.attributes.hideClient;
                 document.getElementById('service-toggle').checked = shouldBeVisible;
                 updateUI(shouldBeVisible);
+                
+                // --- Mise à jour visuelle du bouton clignotant ---
+                const status = d.attributes.driverStatus || "En service";
+                document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
+                if (status.includes('Trafic')) document.getElementById('btn-trafic').classList.add('btn-active');
+                if (status.includes('Accident')) document.getElementById('btn-accident').classList.add('btn-active');
+                if (status.includes('Plein')) document.getElementById('btn-plein').classList.add('btn-active');
+                if (status.includes('Pause')) document.getElementById('btn-pause').classList.add('btn-active');
+                
             } catch (e) {}
         }
 
@@ -241,6 +249,7 @@
                 d.attributes.driverStatus = isVisible ? "En service" : "Hors service";
                 await saveToTraccar(currentDeviceId, d);
                 updateUI(isVisible);
+                if(!isVisible) document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
             } catch (e) {}
             setTimeout(() => { isUpdating = false; }, 2000);
         }
@@ -252,6 +261,13 @@
                 const devs = await res.json();
                 const d = devs[0];
                 d.attributes.driverStatus = label;
+
+                // Gestion du clignotement
+                document.querySelectorAll('.btn').forEach(b => b.classList.remove('btn-active'));
+                if (label !== 'En service') {
+                    element.classList.add('btn-active');
+                }
+
                 if (label.includes('Plein') || label.includes('Pause')) {
                     d.attributes.hideClient = true;
                     updateUI(false);
