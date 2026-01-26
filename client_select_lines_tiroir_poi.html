@@ -23,65 +23,48 @@
         .live-dot { width: 8px; height: 8px; background: var(--live); border-radius: 50%; animation: blink 1s infinite; }
         .live-time { font-weight: 400; color: #666; margin-left: 5px; }
         
-        .weather-3d { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #333; }
-        .weather-icon-3d { width: 38px; height: 38px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2)); }
+        .weather-3d { display: flex; align-items: center; gap: 8px; min-width: 60px; justify-content: flex-end; }
+        .weather-icon-3d { width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1)); }
+        #weather { font-weight: 700; color: #333; font-size: 16px; }
 
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-        /* STYLE DES ARRÊTS / POI AMÉLIORÉ */
-        .poi-container {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
+        /* ARRÊTS / POI */
+        .poi-container { display: flex; flex-direction: column; align-items: center; }
         .poi-icon {
-            width: 38px; height: 38px;
-            background: white;
-            border: 2px solid var(--primary);
-            border-radius: 50%;
-            padding: 2px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            width: 36px; height: 36px; background: white; border: 2.5px solid var(--primary);
+            border-radius: 50%; padding: 2px; box-shadow: 0 3px 8px rgba(0,0,0,0.2);
             object-fit: contain;
-            transition: transform 0.2s;
         }
         .poi-label {
-            background: rgba(255, 255, 255, 0.9);
-            color: var(--primary);
-            font-size: 10px; font-weight: 800;
-            padding: 2px 6px; border-radius: 10px;
-            margin-top: 4px; border: 1px solid #ddd;
-            white-space: nowrap;
+            background: var(--primary); color: white; font-size: 9px; font-weight: 900;
+            padding: 2px 6px; border-radius: 4px; margin-top: -5px; z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); text-transform: uppercase;
         }
 
-        /* TIROIR */
-        .drawer {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: white; z-index: 2000; border-radius: 25px 25px 0 0;
-            box-shadow: 0 -5px 30px rgba(0,0,0,0.1);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateY(calc(100% - 65px));
-        }
+        /* DRAWER & CONTROLS */
+        .drawer { position: fixed; bottom: 0; left: 0; right: 0; background: white; z-index: 2000; border-radius: 25px 25px 0 0; box-shadow: 0 -5px 30px rgba(0,0,0,0.1); transition: transform 0.4s ease; transform: translateY(calc(100% - 65px)); }
         .drawer.open { transform: translateY(0); }
         .drawer-handle { height: 65px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
-        .handle-bar { width: 35px; height: 4px; background: #ebebeb; border-radius: 10px; margin-bottom: 8px; }
-        .handle-text { font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; }
-
+        .handle-bar { width: 35px; height: 4px; background: #eee; border-radius: 10px; margin-bottom: 5px; }
+        .handle-text { font-size: 10px; font-weight: 800; color: #bbb; text-transform: uppercase; }
         .drawer-content { padding: 0 20px 30px 20px; }
-        .line-btn {
-            display: flex; align-items: center; padding: 14px; margin-bottom: 10px;
-            border-radius: 15px; border: 2px solid #f8f8f8; cursor: pointer;
-        }
+        .line-btn { display: flex; align-items: center; padding: 14px; margin-bottom: 10px; border-radius: 15px; border: 2px solid #f8f8f8; cursor: pointer; font-size: 14px; font-weight: 600; }
         .line-btn.active { border-color: var(--primary); background: #f0f7ff; }
         .line-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 15px; }
 
         .controls-bottom { position: absolute; bottom: 85px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
-        .btn-focus { width: 50px; height: 50px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: none; cursor: pointer; }
-        .btn-focus img { width: 24px; opacity: 0.7; }
+        .btn-focus { width: 50px; height: 50px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: none; }
+        .btn-focus img { width: 24px; opacity: 0.6; }
         .btn-focus.active { background: var(--primary); }
         .btn-focus.active img { filter: brightness(0) invert(1); opacity: 1; }
 
+        /* NAVETTE */
         .navette-container { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
-        .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid var(--primary); z-index: 5; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid var(--primary); z-index: 5; display: flex; align-items: center; justify-content: center; }
         .bus-circle img { width: 20px !important; }
         .direction-arrow { position: absolute; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid var(--primary); top: -12px; z-index: 4; transform-origin: 50% 34px; transition: transform 0.4s ease; }
+        .user-dot { width: 14px; height: 14px; background: #3498db; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(52,152,219,0.5); }
     </style>
 </head>
 <body>
@@ -92,7 +75,7 @@
             DIRECT <span class="live-time" id="current-time">--:--</span>
         </div>
         <div class="weather-3d">
-            <img id="weather-icon-3d" class="weather-icon-3d" src="">
+            <img id="weather-icon-3d" class="weather-icon-3d" src="" onerror="this.src='https://openweathermap.org/img/wn/02d.png'">
             <span id="weather">--°</span>
         </div>
     </div>
@@ -103,22 +86,10 @@
             <div class="handle-text">Réseau Navettes</div>
         </div>
         <div class="drawer-content">
-            <div class="line-btn active" data-line="all" onclick="selectLine('all')">
-                <div class="line-dot" style="background: var(--primary)"></div>
-                <div>Toutes les lignes</div>
-            </div>
-            <div class="line-btn" data-line="1" onclick="selectLine('1')">
-                <div class="line-dot" style="background: var(--l1)"></div>
-                <div>Ligne 1 : Arboisie / Mamie</div>
-            </div>
-            <div class="line-btn" data-line="2" onclick="selectLine('2')">
-                <div class="line-dot" style="background: var(--l2)"></div>
-                <div>Ligne 2 : Village / Mamie</div>
-            </div>
-            <div class="line-btn" data-line="3" onclick="selectLine('3')">
-                <div class="line-dot" style="background: var(--l3)"></div>
-                <div>Ligne 3 : Rochebrune / Arbois</div>
-            </div>
+            <div class="line-btn active" data-line="all" onclick="selectLine('all')"><div class="line-dot" style="background: var(--primary)"></div>Toutes les lignes</div>
+            <div class="line-btn" data-line="1" onclick="selectLine('1')"><div class="line-dot" style="background: var(--l1)"></div>Ligne 1 : Arboisie / Mamie</div>
+            <div class="line-btn" data-line="2" onclick="selectLine('2')"><div class="line-dot" style="background: var(--l2)"></div>Ligne 2 : Village / Mamie</div>
+            <div class="line-btn" data-line="3" onclick="selectLine('3')"><div class="line-dot" style="background: var(--l3)"></div>Ligne 3 : Rochebrune / Arbois</div>
         </div>
     </div>
 
@@ -132,9 +103,7 @@
     <script>
         const TRACCAR_URL = 'https://369shuttles.duckdns.org';
         const AUTH = 'Basic ' + btoa('lobby@hotel.local:Hotel2026!');
-        
-        let map, userMarker, circuitLayer, selectedLine = 'all';
-        let shuttles = {}, followId = null, autoCenterShuttle = false, autoCenterUser = false;
+        let map, userMarker, circuitLayer, selectedLine = 'all', shuttles = {}, followId = null, autoCenterShuttle = false, autoCenterUser = false;
 
         function toggleDrawer() { document.getElementById('line-drawer').classList.toggle('open'); }
         function selectLine(line) {
@@ -147,23 +116,18 @@
         map = L.map('map', { zoomControl: false, minZoom: 13 }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // ARRÊTS AMÉLIORÉS : Utilisation de DivIcon pour une visibilité totale
         const hotels = [
-            { id: "mamie", name: "MAMIE", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
-            { id: "arbois", name: "ARBOIS", coords: [45.8542, 6.6317], icon: "images/logomontdarbois.png" },
-            { id: "arboisie", name: "ARBOISIE", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
-            { id: "village", name: "VILLAGE", coords: [45.8575, 6.6206], icon: "images/logovillage.png" }
+            { name: "MAMIE", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
+            { name: "ARBOIS", coords: [45.8542, 6.6317], icon: "images/logomontdarbois.png" },
+            { name: "ARBOISIE", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
+            { name: "VILLAGE", coords: [45.8575, 6.6206], icon: "images/logovillage.png" }
         ];
 
         hotels.forEach(h => {
             const customIcon = L.divIcon({
-                className: 'poi-custom-marker',
-                html: `<div class="poi-container">
-                        <img src="${h.icon}" class="poi-icon">
-                        <div class="poi-label">${h.name}</div>
-                       </div>`,
-                iconSize: [40, 50],
-                iconAnchor: [20, 25]
+                className: '',
+                html: `<div class="poi-container"><img src="${h.icon}" class="poi-icon"><div class="poi-label">${h.name}</div></div>`,
+                iconSize: [40, 50], iconAnchor: [20, 25]
             });
             L.marker(h.coords, { icon: customIcon }).addTo(map);
         });
@@ -177,9 +141,8 @@
 
         async function handleLineChange() {
             if (circuitLayer) map.removeLayer(circuitLayer);
-            const file = selectedLine === 'all' ? 'circuit.json' : `ligne${selectedLine}.json`;
             try {
-                const res = await fetch(file);
+                const res = await fetch(selectedLine === 'all' ? 'circuit.json' : `ligne${selectedLine}.json`);
                 const data = await res.json();
                 circuitLayer = L.geoJSON(data, { style: { color: getLineColor(selectedLine), weight: 6, opacity: 0.5 } }).addTo(map);
             } catch(e) {}
@@ -192,36 +155,18 @@
                     fetch(`${TRACCAR_URL}/api/devices`, { headers: { 'Authorization': AUTH } }),
                     fetch(`${TRACCAR_URL}/api/positions`, { headers: { 'Authorization': AUTH } })
                 ]);
-                const devices = await resDev.json();
-                const positions = await resPos.json();
-
+                const devices = await resDev.json(), positions = await resPos.json();
                 const activeOnes = devices.filter(d => !d.attributes.hideClient && (selectedLine === 'all' || (d.attributes.assignedLine && d.attributes.assignedLine.includes(selectedLine))));
 
                 activeOnes.forEach(dev => {
                     const pos = positions.find(p => p.deviceId === dev.id);
                     if (!pos) return;
-                    const latlng = [pos.latitude, pos.longitude];
-                    const lineColor = getLineColor(dev.attributes.assignedLine);
-                    
-                    if (!shuttles[dev.id]) {
-                        shuttles[dev.id] = L.marker(latlng).addTo(map).on('click', () => {
-                            followId = dev.id; autoCenterShuttle = true; autoCenterUser = false;
-                            updateUIButtons(); map.flyTo(latlng, 17);
-                        });
-                    }
-                    
-                    const html = `
-                        <div class="navette-container">
-                            <div class="direction-arrow" style="transform: rotate(${pos.course || 0}deg); border-bottom-color: ${lineColor}"></div>
-                            <div class="bus-circle" style="border-color: ${lineColor}">
-                                <img src="images/van.png">
-                            </div>
-                        </div>`;
-
+                    const latlng = [pos.latitude, pos.longitude], lineColor = getLineColor(dev.attributes.assignedLine);
+                    if (!shuttles[dev.id]) shuttles[dev.id] = L.marker(latlng).addTo(map).on('click', () => { followId = dev.id; autoCenterShuttle = true; autoCenterUser = false; updateUIButtons(); map.flyTo(latlng, 17); });
+                    const html = `<div class="navette-container"><div class="direction-arrow" style="transform: rotate(${pos.course || 0}deg); border-bottom-color: ${lineColor}"></div><div class="bus-circle" style="border-color: ${lineColor}"><img src="images/van.png"></div></div>`;
                     shuttles[dev.id].setLatLng(latlng).setIcon(L.divIcon({ html: html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] }));
                     if (followId === dev.id && autoCenterShuttle) map.panTo(latlng);
                 });
-
                 Object.keys(shuttles).forEach(id => { if (!activeOnes.find(d => d.id == id)) { map.removeLayer(shuttles[id]); delete shuttles[id]; } });
             } catch (e) {}
         }
@@ -231,11 +176,8 @@
                 const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.62&current_weather=true`);
                 const data = await res.json();
                 const code = data.current_weather.weathercode;
-                
-                // Icônes météo animées/3D de haute qualité
                 const weatherMap = { 0: "clear-day", 1: "partly-cloudy-day", 2: "cloudy", 3: "overcast", 45: "fog", 51: "rain", 61: "rain", 71: "snow" };
                 const name = weatherMap[code] || "cloudy";
-                
                 document.getElementById('weather').innerText = `${Math.round(data.current_weather.temperature)}°`;
                 document.getElementById('weather-icon-3d').src = `https://raw.githubusercontent.com/basmilius/weather-icons/dev/production/fill/all/${name}.svg`;
             } catch (e) {}
