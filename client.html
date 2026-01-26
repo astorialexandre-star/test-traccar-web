@@ -7,11 +7,10 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --primary: #005587; --success: #2ecc71; --l1: #3498db; --l2: #9b59b6; --l3: #e67e22; }
+        :root { --primary: #005587; --l1: #3498db; --l2: #9b59b6; --l3: #e67e22; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; }
         #map { height: 100vh; width: 100%; z-index: 1; }
 
-        /* BANNIERE HAUTE */
         .client-header { 
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: white; width: 90%; max-width: 450px;
@@ -21,7 +20,6 @@
         .header-top { display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--primary); }
         .weather-box { font-size: 0.9em; color: #666; display: flex; align-items: center; gap: 5px; }
 
-        /* SELECTEUR DE LIGNE */
         .line-selector-container {
             position: absolute; top: 85px; left: 50%; transform: translateX(-50%);
             z-index: 1000; width: 90%; max-width: 450px;
@@ -32,7 +30,6 @@
             color: var(--primary); background: white; appearance: none; text-align: center;
         }
 
-        /* BOUTONS DE FOCUS */
         .controls-bottom { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px; }
         .btn-focus { 
             width: 55px; height: 55px; background: white; border-radius: 50%; 
@@ -43,19 +40,15 @@
         .btn-focus.active { background: var(--primary); }
         .btn-focus.active img { filter: brightness(0) invert(1); }
 
-        /* MARQUEURS NAVETTES - CORRECTION TAILLE ICI */
+        /* MARQUEUR NAVETTE */
         .navette-container { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
         .bus-circle { 
             width: 36px; height: 36px; background: white; border-radius: 50%; 
             border: 3px solid var(--primary); display: flex; align-items: center; 
             justify-content: center; z-index: 5; transition: all 0.3s;
-            overflow: hidden; /* Empêche l'image de déborder */
+            overflow: hidden;
         }
-        .bus-circle img { 
-            width: 22px !important; 
-            height: 22px !important; 
-            object-fit: contain;
-        }
+        .bus-circle img { width: 22px !important; height: 22px !important; object-fit: contain; }
         
         .direction-arrow { 
             position: absolute; width: 0; height: 0; 
@@ -65,10 +58,11 @@
         }
 
         @keyframes pulse-border {
-            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0.4); }
-            70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(0,0,0,0); }
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0.2); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(0,0,0,0); }
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0); }
         }
+        /* La couleur du pulse s'adapte à la ligne via JS */
         .focused-shuttle .bus-circle { animation: pulse-border 1.5s infinite; border-width: 4px; }
 
         .user-dot { width: 16px; height: 16px; background: #2196F3; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
@@ -141,10 +135,11 @@
             updatePositions();
         }
 
-        function getLineColor(line) {
-            if (line == '1') return '#3498db';
-            if (line == '2') return '#9b59b6';
-            if (line == '3') return '#e67e22';
+        function getLineColor(lineStr) {
+            if (!lineStr) return '#005587';
+            if (lineStr.includes('1')) return '#3498db';
+            if (lineStr.includes('2')) return '#9b59b6';
+            if (lineStr.includes('3')) return '#e67e22';
             return '#005587';
         }
 
@@ -157,6 +152,7 @@
                 const devices = await resDev.json();
                 const positions = await resPos.json();
 
+                // Filtrage STRICT : hideClient doit être faux (En service) ET correspondre à la ligne choisie
                 const activeOnes = devices.filter(d => !d.attributes.hideClient && 
                     (selectedLine === 'all' || (d.attributes.assignedLine && d.attributes.assignedLine.includes(selectedLine))));
 
@@ -197,6 +193,7 @@
                     }
                 });
 
+                // Supprimer de la carte les navettes passées en "Hors service" ou filtrées par ligne
                 Object.keys(shuttles).forEach(id => {
                     if (!activeOnes.find(d => d.id == id)) {
                         map.removeLayer(shuttles[id]);
