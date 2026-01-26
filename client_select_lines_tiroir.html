@@ -7,105 +7,92 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --primary: #005587; --l1: #3498db; --l2: #9b59b6; --l3: #e67e22; }
-        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; }
+        :root { --primary: #005587; --l1: #3498db; --l2: #9b59b6; --l3: #e67e22; --live: #e74c3c; }
+        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', Roboto, sans-serif; background: #f4f7f6; }
         #map { height: 100vh; width: 100%; z-index: 1; }
 
-        /* BANNIERE HAUTE */
-        .client-header { 
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
-            z-index: 1000; background: white; width: 90%; max-width: 450px;
-            padding: 12px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            text-align: center;
+        /* NOUVELLE BANNIERE SUPERIEURE STYLE "DIRECT" */
+        .live-header {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: white; width: 85%; max-width: 400px;
+            height: 50px; border-radius: 50px; display: flex; align-items: center;
+            justify-content: space-between; padding: 0 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05);
         }
-        .header-top { display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--primary); }
-        .weather-box { font-size: 0.85em; color: #666; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 5px; }
-        .weather-icon { width: 20px; height: 20px; vertical-align: middle; }
+        .live-badge { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; }
+        .live-dot { width: 8px; height: 8px; background: var(--live); border-radius: 50%; animation: blink 1s infinite; }
+        .live-time { font-weight: 400; color: #333; margin-left: 5px; }
+        
+        .weather-3d { display: flex; align-items: center; gap: 5px; font-weight: 600; color: #444; }
+        .weather-icon-3d { width: 32px; height: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
         /* TIROIR / DRAWER */
         .drawer {
             position: fixed; bottom: 0; left: 0; right: 0;
-            background: white; z-index: 2000;
-            border-radius: 20px 20px 0 0;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.15);
+            background: white; z-index: 2000; border-radius: 25px 25px 0 0;
+            box-shadow: 0 -5px 30px rgba(0,0,0,0.1);
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateY(calc(100% - 60px));
+            transform: translateY(calc(100% - 65px));
         }
         .drawer.open { transform: translateY(0); }
-
-        .drawer-handle {
-            height: 60px; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; cursor: pointer;
-        }
-        .handle-bar { width: 40px; height: 5px; background: #ddd; border-radius: 10px; margin-bottom: 8px; }
-        .handle-text { font-size: 14px; font-weight: bold; color: var(--primary); letter-spacing: 1px; }
+        .drawer-handle { height: 65px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+        .handle-bar { width: 35px; height: 4px; background: #ebebeb; border-radius: 10px; margin-bottom: 8px; }
+        .handle-text { font-size: 12px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 1px; }
 
         .drawer-content { padding: 0 20px 30px 20px; }
         .line-btn {
-            display: flex; align-items: center; padding: 15px;
-            margin-bottom: 10px; border-radius: 12px; border: 2px solid #f0f0f0;
-            cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; padding: 14px; margin-bottom: 10px;
+            border-radius: 15px; border: 2px solid #f8f8f8; cursor: pointer; transition: 0.2s;
         }
-        .line-btn.active { border-color: var(--primary); background: #f0f8ff; }
-        .line-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 15px; }
-        .line-name { font-weight: bold; font-size: 14px; color: #333; }
+        .line-btn.active { border-color: var(--primary); background: #f0f7ff; }
+        .line-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 15px; }
+        .line-name { font-weight: 600; font-size: 14px; color: #333; }
 
-        /* CONTROLES FOCUS */
-        .controls-bottom { position: absolute; bottom: 80px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px; }
+        /* BOUTONS FLOTTANTS */
+        .controls-bottom { position: absolute; bottom: 85px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
         .btn-focus { 
-            width: 55px; height: 55px; background: white; border-radius: 50%; 
+            width: 50px; height: 50px; background: white; border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: none; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: none;
         }
-        .btn-focus img { width: 30px; height: 30px; }
+        .btn-focus img { width: 24px; height: 24px; opacity: 0.7; }
         .btn-focus.active { background: var(--primary); }
-        .btn-focus.active img { filter: brightness(0) invert(1); }
+        .btn-focus.active img { filter: brightness(0) invert(1); opacity: 1; }
 
-        /* NAVETTES */
+        /* NAVETTES ET DIRECTION */
         .navette-container { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
-        .bus-circle { 
-            width: 36px; height: 36px; background: white; border-radius: 50%; 
-            border: 3px solid var(--primary); display: flex; align-items: center; 
-            justify-content: center; z-index: 5; overflow: hidden; 
-        }
-        .bus-circle img { width: 22px !important; height: 22px !important; object-fit: contain; }
+        .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid var(--primary); z-index: 5; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .bus-circle img { width: 20px !important; height: 20px !important; }
         
-        /* Correction de l'indicateur de direction */
         .direction-arrow { 
-            position: absolute; 
-            width: 0; height: 0; 
-            border-left: 7px solid transparent; 
-            border-right: 7px solid transparent;
-            border-bottom: 12px solid var(--primary); 
-            top: -10px; /* Ajusté pour être bien visible au dessus du cercle */
-            z-index: 10; 
-            transform-origin: center 32px; /* Centre de rotation sur le milieu du bus */
-            transition: transform 0.5s ease-in-out;
+            position: absolute; width: 0; height: 0; 
+            border-left: 6px solid transparent; border-right: 6px solid transparent;
+            border-bottom: 10px solid var(--primary);
+            top: -12px; z-index: 4; transform-origin: 50% 34px; transition: transform 0.4s ease;
         }
-        
-        @keyframes pulse-border { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0.2); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(0,0,0,0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
-        .focused-shuttle .bus-circle { animation: pulse-border 1.5s infinite; border-width: 4px; }
-        
-        .user-dot { width: 16px; height: 16px; background: #2196F3; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
-        #error-msg { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; z-index: 3000; display: none; text-align: center; border: 2px solid var(--primary); width: 80%; }
+
+        .user-dot { width: 14px; height: 14px; background: #3498db; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(52, 152, 219, 0.5); }
     </style>
 </head>
 <body>
 
-    <div class="client-header">
-        <div class="header-top">
-            <span>SUIVI NAVETTES</span>
-            <span id="current-time">--:--</span>
+    <div class="live-header">
+        <div class="live-badge">
+            <div class="live-dot"></div>
+            DIRECT <span class="live-time" id="current-time">--:--</span>
         </div>
-        <div class="weather-box">
-            📍 MEGEVE : <img id="weather-icon" class="weather-icon" src="" style="display:none"> <span id="weather">--°C</span>
+        <div class="weather-3d">
+            <img id="weather-icon-3d" class="weather-icon-3d" src="" style="display:none">
+            <span id="weather">--°</span>
         </div>
     </div>
 
     <div class="drawer" id="line-drawer">
         <div class="drawer-handle" onclick="toggleDrawer()">
             <div class="handle-bar"></div>
-            <div class="handle-text">CHOISIR UNE LIGNE</div>
+            <div class="handle-text">Réseau Navettes</div>
         </div>
         <div class="drawer-content">
             <div class="line-btn active" data-line="all" onclick="selectLine('all')">
@@ -132,7 +119,6 @@
         <button class="btn-focus" id="focus-toggle" onclick="toggleShuttleCenter()"><img src="images/van.png"></button>
     </div>
 
-    <div id="error-msg"><h3>FIN DE SERVICE</h3><p>Aucune navette en ligne.</p></div>
     <div id="map"></div>
 
     <script>
@@ -143,7 +129,6 @@
         let shuttles = {}, followId = null, autoCenterShuttle = false, autoCenterUser = false;
 
         function toggleDrawer() { document.getElementById('line-drawer').classList.toggle('open'); }
-        
         function selectLine(line) {
             selectedLine = line;
             document.querySelectorAll('.line-btn').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-line') === line));
@@ -155,12 +140,12 @@
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
         const hotels = [
-            { name: "Mamie Megève", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
-            { name: "Mont d'Arbois", coords: [45.8542, 6.6317], icon: "images/logomontdarbois.png" },
-            { name: "L'Arboisie", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
+            { name: "Mamie", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
+            { name: "Arbois", coords: [45.8542, 6.6317], icon: "images/logomontdarbois.png" },
+            { name: "Arboisie", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
             { name: "Village", coords: [45.8575, 6.6206], icon: "images/logovillage.png" }
         ];
-        hotels.forEach(h => L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [45, 45] }) }).addTo(map));
+        hotels.forEach(h => L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [40, 40] }) }).addTo(map));
 
         function getLineColor(l) {
             if (!l) return '#005587';
@@ -168,17 +153,6 @@
             if (l.toString().includes('2')) return '#9b59b6';
             if (l.toString().includes('3')) return '#e67e22';
             return '#005587';
-        }
-
-        async function handleLineChange() {
-            if (circuitLayer) map.removeLayer(circuitLayer);
-            const file = selectedLine === 'all' ? 'circuit.json' : `ligne${selectedLine}.json`;
-            try {
-                const res = await fetch(file);
-                const data = await res.json();
-                circuitLayer = L.geoJSON(data, { style: { color: getLineColor(selectedLine), weight: 5, opacity: 0.4 } }).addTo(map);
-            } catch(e) {}
-            updatePositions();
         }
 
         async function updatePositions() {
@@ -191,14 +165,13 @@
                 const positions = await resPos.json();
 
                 const activeOnes = devices.filter(d => !d.attributes.hideClient && (selectedLine === 'all' || (d.attributes.assignedLine && d.attributes.assignedLine.includes(selectedLine))));
-                document.getElementById('error-msg').style.display = activeOnes.length === 0 ? 'block' : 'none';
 
                 activeOnes.forEach(dev => {
                     const pos = positions.find(p => p.deviceId === dev.id);
                     if (!pos) return;
                     const latlng = [pos.latitude, pos.longitude];
                     const lineColor = getLineColor(dev.attributes.assignedLine);
-                    const heading = pos.course || 0;
+                    const course = pos.course || 0;
 
                     if (!shuttles[dev.id]) {
                         shuttles[dev.id] = L.marker(latlng).addTo(map).on('click', () => {
@@ -209,7 +182,7 @@
                     
                     const html = `
                         <div class="navette-container ${followId === dev.id && autoCenterShuttle ? 'focused-shuttle' : ''}">
-                            <div class="direction-arrow" style="transform: rotate(${heading}deg); border-bottom-color: ${lineColor}"></div>
+                            <div class="direction-arrow" style="transform: rotate(${course}deg); border-bottom-color: ${lineColor}"></div>
                             <div class="bus-circle" style="border-color: ${lineColor}">
                                 <img src="images/van.png">
                             </div>
@@ -221,6 +194,37 @@
 
                 Object.keys(shuttles).forEach(id => { if (!activeOnes.find(d => d.id == id)) { map.removeLayer(shuttles[id]); delete shuttles[id]; } });
             } catch (e) {}
+        }
+
+        async function updateWeather() {
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.62&current_weather=true`);
+                const data = await res.json();
+                const code = data.current_weather.weathercode;
+                
+                // Utilisation d'icônes météo 3D (Fluent Emoji / Microsoft Style)
+                let iconId = "1d"; 
+                if (code >= 1 && code <= 3) iconId = "02d"; 
+                if (code >= 51 && code <= 67) iconId = "10d";
+                if (code >= 71 && code <= 77) iconId = "13d";
+                
+                // Source d'icônes 3D qualitatifs
+                const iconUrl = `https://raw.githubusercontent.com/basmilius/weather-icons/dev/production/fill/all/${getWeatherIconName(code)}.svg`;
+
+                document.getElementById('weather').innerText = `${Math.round(data.current_weather.temperature)}°`;
+                const img = document.getElementById('weather-icon-3d');
+                img.src = iconUrl;
+                img.style.display = "block";
+            } catch (e) {}
+        }
+
+        function getWeatherIconName(code) {
+            if (code === 0) return "clear-day";
+            if (code <= 3) return "partly-cloudy-day";
+            if (code <= 48) return "fog";
+            if (code <= 67) return "rain";
+            if (code <= 77) return "snow";
+            return "cloudy";
         }
 
         function toggleUserCenter() { autoCenterUser = !autoCenterUser; if (autoCenterUser) autoCenterShuttle = false; updateUIButtons(); if (autoCenterUser && userMarker) map.panTo(userMarker.getLatLng()); }
@@ -235,32 +239,10 @@
         map.locate({watch: true, enableHighAccuracy: true});
         map.on('dragstart', () => { autoCenterShuttle = false; autoCenterUser = false; updateUIButtons(); });
 
-        async function updateWeather() {
-            try {
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.62&current_weather=true`);
-                const data = await res.json();
-                const temp = Math.round(data.current_weather.temperature);
-                const code = data.current_weather.weathercode;
-                
-                let iconUrl = "https://openweathermap.org/img/wn/01d.png";
-                if (code >= 1 && code <= 3) iconUrl = "https://openweathermap.org/img/wn/02d.png";
-                if (code >= 45 && code <= 48) iconUrl = "https://openweathermap.org/img/wn/50d.png";
-                if (code >= 51 && code <= 67) iconUrl = "https://openweathermap.org/img/wn/10d.png";
-                if (code >= 71 && code <= 77) iconUrl = "https://openweathermap.org/img/wn/13d.png";
-                if (code >= 80) iconUrl = "https://openweathermap.org/img/wn/09d.png";
-
-                document.getElementById('weather').innerText = `${temp}°C`;
-                const img = document.getElementById('weather-icon');
-                img.src = iconUrl;
-                img.style.display = "inline-block";
-            } catch (e) {}
-        }
-
         setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 1000);
         setInterval(updatePositions, 4000);
         setInterval(updateWeather, 600000);
-        handleLineChange();
-        updateWeather();
+        updateWeather(); updatePositions();
     </script>
 </body>
 </html>
