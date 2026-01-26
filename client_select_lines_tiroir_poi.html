@@ -156,6 +156,12 @@
                 const res = await fetch(selectedLine === 'all' ? 'circuit.json' : `ligne${selectedLine}.json`);
                 const data = await res.json();
                 circuitLayer = L.geoJSON(data, { style: { color: getLineColor(selectedLine), weight: 6, opacity: 0.5 } }).addTo(map);
+                
+                // AJUSTEMENT DU ZOOM SUR LA LIGNE
+                const bounds = circuitLayer.getBounds();
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+                }
             } catch(e) {}
             updatePositions();
         }
@@ -176,17 +182,12 @@
                     
                     if (!shuttles[dev.id]) {
                         shuttles[dev.id] = L.marker(latlng).addTo(map).on('click', () => { 
-                            followId = dev.id; 
-                            autoCenterShuttle = true; 
-                            autoCenterUser = false; 
-                            updateUIButtons(); 
-                            map.flyTo(latlng, 17); 
+                            followId = dev.id; autoCenterShuttle = true; autoCenterUser = false; 
+                            updateUIButtons(); map.flyTo(latlng, 17); 
                         });
                     }
                     
-                    // AJOUT DE LA CLASSE FOCUSED SI LA NAVETTE EST SUIVIE
                     const isFocused = (followId === dev.id && autoCenterShuttle);
-                    
                     const html = `
                         <div class="navette-container ${isFocused ? 'focused-shuttle' : ''}">
                             <div class="direction-arrow" style="transform: rotate(${pos.course || 0}deg); border-bottom-color: ${lineColor}"></div>
@@ -220,10 +221,8 @@
                 const keys = Object.keys(shuttles);
                 if (keys.length > 0) followId = parseInt(keys[0]);
             }
-            autoCenterShuttle = !autoCenterShuttle; 
-            autoCenterUser = false; 
-            updateUIButtons(); 
-            updatePositions(); // Forcer la mise à jour pour l'effet pulse
+            autoCenterShuttle = !autoCenterShuttle; autoCenterUser = false; 
+            updateUIButtons(); updatePositions();
         }
         function updateUIButtons() { document.getElementById('user-toggle').classList.toggle('active', autoCenterUser); document.getElementById('focus-toggle').classList.toggle('active', autoCenterShuttle); }
 
