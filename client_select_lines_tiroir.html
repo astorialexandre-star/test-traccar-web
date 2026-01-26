@@ -19,7 +19,8 @@
             text-align: center;
         }
         .header-top { display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--primary); }
-        .weather-box { font-size: 0.85em; color: #666; margin-top: 4px; }
+        .weather-box { font-size: 0.85em; color: #666; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .weather-icon { width: 20px; height: 20px; vertical-align: middle; }
 
         /* TIROIR / DRAWER */
         .drawer {
@@ -88,7 +89,9 @@
             <span>SUIVI NAVETTES</span>
             <span id="current-time">--:--</span>
         </div>
-        <div class="weather-box">📍 MEGEVE : <span id="weather">--°C</span></div>
+        <div class="weather-box">
+            📍 MEGEVE : <img id="weather-icon" class="weather-icon" src="" style="display:none"> <span id="weather">--°C</span>
+        </div>
     </div>
 
     <div class="drawer" id="line-drawer">
@@ -185,9 +188,8 @@
                 activeOnes.forEach(dev => {
                     const pos = positions.find(p => p.deviceId === dev.id);
                     if (!pos) return;
-
                     const latlng = [pos.latitude, pos.longitude];
-                    const lineColor = getLineColor(dev.attributes.assignedLine); // RECUPERATION COULEUR
+                    const lineColor = getLineColor(dev.attributes.assignedLine);
 
                     if (!shuttles[dev.id]) {
                         shuttles[dev.id] = L.marker(latlng).addTo(map).on('click', () => {
@@ -196,7 +198,6 @@
                         });
                     }
                     
-                    // MISE A JOUR DU HTML AVEC LA COULEUR DYNAMIQUE
                     const html = `
                         <div class="navette-container ${followId === dev.id && autoCenterShuttle ? 'focused-shuttle' : ''}">
                             <div class="direction-arrow" style="transform: rotate(${pos.course || 0}deg); border-bottom-color: ${lineColor}"></div>
@@ -225,9 +226,33 @@
         map.locate({watch: true, enableHighAccuracy: true});
         map.on('dragstart', () => { autoCenterShuttle = false; autoCenterUser = false; updateUIButtons(); });
 
+        async function updateWeather() {
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.62&current_weather=true`);
+                const data = await res.json();
+                const temp = Math.round(data.current_weather.temperature);
+                const code = data.current_weather.weathercode;
+                
+                // Map codes Open-Meteo vers icônes simples
+                let iconUrl = "https://openweathermap.org/img/wn/01d.png"; // Default sun
+                if (code >= 1 && code <= 3) iconUrl = "https://openweathermap.org/img/wn/02d.png"; // Partly cloudy
+                if (code >= 45 && code <= 48) iconUrl = "https://openweathermap.org/img/wn/50d.png"; // Fog
+                if (code >= 51 && code <= 67) iconUrl = "https://openweathermap.org/img/wn/10d.png"; // Rain
+                if (code >= 71 && code <= 77) iconUrl = "https://openweathermap.org/img/wn/13d.png"; // Snow
+                if (code >= 80) iconUrl = "https://openweathermap.org/img/wn/09d.png"; // Showers
+
+                document.getElementById('weather').innerText = `${temp}°C`;
+                const img = document.getElementById('weather-icon');
+                img.src = iconUrl;
+                img.style.display = "inline-block";
+            } catch (e) {}
+        }
+
         setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 1000);
         setInterval(updatePositions, 4000);
+        setInterval(updateWeather, 600000);
         handleLineChange();
+        updateWeather();
     </script>
 </body>
 </html>
