@@ -28,11 +28,11 @@
             border-radius: 20px 20px 0 0;
             box-shadow: 0 -5px 20px rgba(0,0,0,0.15);
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateY(calc(100% - 60px)); /* Affiche juste la languette */
+            transform: translateY(calc(100% - 60px));
         }
         .drawer.open { transform: translateY(0); }
 
-        /* LANGUETTE DE TRACTION */
+        /* LANGUETTE */
         .drawer-handle {
             height: 60px; display: flex; flex-direction: column;
             align-items: center; justify-content: center; cursor: pointer;
@@ -52,12 +52,12 @@
         .line-info { flex: 1; }
         .line-name { font-weight: bold; font-size: 14px; color: #333; }
 
-        /* BOUTONS DE FOCUS (Remontés pour ne pas être cachés par la languette) */
+        /* BOUTONS DE FOCUS */
         .controls-bottom { position: absolute; bottom: 80px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px; }
         .btn-focus { 
             width: 55px; height: 55px; background: white; border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: none; cursor: pointer;
         }
         .btn-focus img { width: 30px; height: 30px; }
         .btn-focus.active { background: var(--primary); }
@@ -68,9 +68,12 @@
         .bus-circle { width: 36px; height: 36px; background: white; border-radius: 50%; border: 3px solid var(--primary); display: flex; align-items: center; justify-content: center; z-index: 5; overflow: hidden; }
         .bus-circle img { width: 22px !important; height: 22px !important; object-fit: contain; }
         .direction-arrow { position: absolute; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid var(--primary); top: -8px; z-index: 4; }
+        
         @keyframes pulse-border { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0.2); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(0,0,0,0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
         .focused-shuttle .bus-circle { animation: pulse-border 1.5s infinite; border-width: 4px; }
+        
         .user-dot { width: 16px; height: 16px; background: #2196F3; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+        #error-msg { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; z-index: 3000; display: none; text-align: center; border: 2px solid var(--primary); width: 80%; }
     </style>
 </head>
 <body>
@@ -109,10 +112,15 @@
     </div>
 
     <div class="controls-bottom">
-        <button class="btn-focus" id="user-toggle" onclick="toggleUserCenter()"><img src="images/user-focus.png"></button>
-        <button class="btn-focus" id="focus-toggle" onclick="toggleShuttleCenter()"><img src="images/van.png"></button>
+        <button class="btn-focus" id="user-toggle" onclick="toggleUserCenter()">
+            <img src="images/user-focus.png" alt="User">
+        </button>
+        <button class="btn-focus" id="focus-toggle" onclick="toggleShuttleCenter()">
+            <img src="images/van.png" alt="Van">
+        </button>
     </div>
 
+    <div id="error-msg"><h3>FIN DE SERVICE</h3><p>Aucune navette n'est actuellement en ligne.</p></div>
     <div id="map"></div>
 
     <script>
@@ -122,7 +130,6 @@
         let map, userMarker, circuitLayer, selectedLine = 'all';
         let shuttles = {}, followId = null, autoCenterShuttle = false, autoCenterUser = false;
 
-        // UI Drawer
         function toggleDrawer() { document.getElementById('line-drawer').classList.toggle('open'); }
         
         function selectLine(line) {
@@ -130,22 +137,23 @@
             document.querySelectorAll('.line-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.getAttribute('data-line') === line);
             });
-            setTimeout(toggleDrawer, 300); // Referme le tiroir après sélection
+            setTimeout(toggleDrawer, 300);
             handleLineChange();
         }
 
-        // Init Map
         map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
         const hotels = [
-            { name: "Mamie", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
-            { name: "Arbois", coords: [45.8542, 6.6317], icon: "images/logontdarbois.png" },
-            { name: "Arboisie", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
+            { name: "Mamie Megève", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
+            { name: "Mont d'Arbois", coords: [45.8542, 6.6317], icon: "images/logomontdarbois.png" },
+            { name: "L'Arboisie", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
             { name: "Village", coords: [45.8575, 6.6206], icon: "images/logovillage.png" }
         ];
 
-        hotels.forEach(h => L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [45, 45] }) }).addTo(map));
+        hotels.forEach(h => {
+            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [45, 45], iconAnchor: [22, 22] }) }).addTo(map);
+        });
 
         async function handleLineChange() {
             if (circuitLayer) map.removeLayer(circuitLayer);
@@ -172,6 +180,8 @@
                 const positions = await resPos.json();
 
                 const activeOnes = devices.filter(d => !d.attributes.hideClient && (selectedLine === 'all' || (d.attributes.assignedLine && d.attributes.assignedLine.includes(selectedLine))));
+
+                document.getElementById('error-msg').style.display = activeOnes.length === 0 ? 'block' : 'none';
 
                 activeOnes.forEach(dev => {
                     const pos = positions.find(p => p.deviceId === dev.id);
