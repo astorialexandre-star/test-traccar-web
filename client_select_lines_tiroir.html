@@ -24,7 +24,7 @@
         .live-time { font-weight: 400; color: #666; margin-left: 5px; }
         
         .weather-3d { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #333; font-size: 16px; }
-        .weather-icon-3d { width: 35px; height: 35px; object-fit: contain; }
+        .weather-icon-3d { width: 32px; height: 32px; object-fit: contain; }
 
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
@@ -84,7 +84,7 @@
             DIRECT <span class="live-time" id="current-time">--:--</span>
         </div>
         <div class="weather-3d">
-            <img id="weather-icon-3d" class="weather-icon-3d" src="">
+            <img id="weather-icon-3d" class="weather-icon-3d" src="" alt="">
             <span id="weather">--°</span>
         </div>
     </div>
@@ -134,19 +134,28 @@
             selectedLine = line;
             document.querySelectorAll('.line-btn').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-line') === line));
             setTimeout(toggleDrawer, 300);
-            handleLineChange(); // RE-AJOUTÉ ICI
+            handleLineChange();
         }
 
         map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
+        // Correction de la taille des icônes d'hôtels pour éviter l'effet "géant"
         const hotels = [
             { name: "Mamie", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png" },
             { name: "Arbois", coords: [45.8542, 6.6317], icon: "images/logomontdarbois.png" },
             { name: "Arboisie", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
             { name: "Village", coords: [45.8575, 6.6206], icon: "images/logovillage.png" }
         ];
-        hotels.forEach(h => L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [40, 40] }) }).addTo(map));
+        hotels.forEach(h => {
+            L.marker(h.coords, { 
+                icon: L.icon({ 
+                    iconUrl: h.icon, 
+                    iconSize: [35, 35], // Taille fixe pour éviter les bugs d'affichage
+                    iconAnchor: [17, 17]
+                }) 
+            }).addTo(map);
+        });
 
         function getLineColor(l) {
             if (!l) return '#005587';
@@ -156,7 +165,6 @@
             return '#005587';
         }
 
-        // FONCTION RE-AJOUTÉE POUR LE JSON
         async function handleLineChange() {
             if (circuitLayer) map.removeLayer(circuitLayer);
             const file = selectedLine === 'all' ? 'circuit.json' : `ligne${selectedLine}.json`;
@@ -166,7 +174,7 @@
                 circuitLayer = L.geoJSON(data, { 
                     style: { color: getLineColor(selectedLine), weight: 5, opacity: 0.4 } 
                 }).addTo(map);
-            } catch(e) { console.error("Erreur JSON:", e); }
+            } catch(e) {}
             updatePositions();
         }
 
@@ -217,17 +225,18 @@
                 const data = await res.json();
                 const code = data.current_weather.weathercode;
                 
-                // Correction du lien vers l'icône météo 3D
+                // Utilisation de liens d'icônes 3D plus stables
                 const weatherMap = {
-                    0: "clear-day", 1: "partly-cloudy-day", 2: "partly-cloudy-day", 3: "overcast-day",
-                    45: "fog-day", 48: "fog-day", 51: "rain", 61: "rain", 71: "snow", 80: "rain"
+                    0: "01d", 1: "02d", 2: "02d", 3: "03d",
+                    45: "50d", 48: "50d", 51: "10d", 61: "10d", 71: "13d", 80: "09d"
                 };
-                const iconName = weatherMap[code] || "cloudy";
-                const iconUrl = `https://raw.githubusercontent.com/basmilius/weather-icons/dev/production/fill/all/${iconName}.svg`;
+                const iconCode = weatherMap[code] || "03d";
+                const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
 
                 document.getElementById('weather').innerText = `${Math.round(data.current_weather.temperature)}°`;
                 const img = document.getElementById('weather-icon-3d');
                 img.src = iconUrl;
+                img.style.display = "block";
             } catch (e) {}
         }
 
@@ -247,7 +256,6 @@
         setInterval(updatePositions, 4000);
         setInterval(updateWeather, 600000);
         
-        // INITIALISATION CORRECTE
         updateWeather(); 
         handleLineChange(); 
     </script>
