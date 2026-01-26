@@ -21,7 +21,7 @@
         .header-top { display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--primary); }
         .weather-box { font-size: 0.85em; color: #666; margin-top: 4px; }
 
-        /* TIROIR / DRAWER EN BAS */
+        /* TIROIR / DRAWER */
         .drawer {
             position: fixed; bottom: 0; left: 0; right: 0;
             background: white; z-index: 2000;
@@ -32,7 +32,6 @@
         }
         .drawer.open { transform: translateY(0); }
 
-        /* LANGUETTE */
         .drawer-handle {
             height: 60px; display: flex; flex-direction: column;
             align-items: center; justify-content: center; cursor: pointer;
@@ -40,7 +39,6 @@
         .handle-bar { width: 40px; height: 5px; background: #ddd; border-radius: 10px; margin-bottom: 8px; }
         .handle-text { font-size: 14px; font-weight: bold; color: var(--primary); letter-spacing: 1px; }
 
-        /* CONTENU DU TIROIR */
         .drawer-content { padding: 0 20px 30px 20px; }
         .line-btn {
             display: flex; align-items: center; padding: 15px;
@@ -49,10 +47,9 @@
         }
         .line-btn.active { border-color: var(--primary); background: #f0f8ff; }
         .line-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 15px; }
-        .line-info { flex: 1; }
         .line-name { font-weight: bold; font-size: 14px; color: #333; }
 
-        /* BOUTONS DE FOCUS */
+        /* CONTROLES FOCUS */
         .controls-bottom { position: absolute; bottom: 80px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 15px; }
         .btn-focus { 
             width: 55px; height: 55px; background: white; border-radius: 50%; 
@@ -63,11 +60,19 @@
         .btn-focus.active { background: var(--primary); }
         .btn-focus.active img { filter: brightness(0) invert(1); }
 
-        /* ICONES NAVETTES */
+        /* NAVETTES */
         .navette-container { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
-        .bus-circle { width: 36px; height: 36px; background: white; border-radius: 50%; border: 3px solid var(--primary); display: flex; align-items: center; justify-content: center; z-index: 5; overflow: hidden; }
+        .bus-circle { 
+            width: 36px; height: 36px; background: white; border-radius: 50%; 
+            border: 3px solid var(--primary); display: flex; align-items: center; 
+            justify-content: center; z-index: 5; overflow: hidden; 
+        }
         .bus-circle img { width: 22px !important; height: 22px !important; object-fit: contain; }
-        .direction-arrow { position: absolute; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid var(--primary); top: -8px; z-index: 4; }
+        .direction-arrow { 
+            position: absolute; width: 0; height: 0; 
+            border-left: 6px solid transparent; border-right: 6px solid transparent;
+            border-bottom: 10px solid var(--primary); top: -8px; z-index: 4; 
+        }
         
         @keyframes pulse-border { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0.2); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(0,0,0,0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
         .focused-shuttle .bus-circle { animation: pulse-border 1.5s infinite; border-width: 4px; }
@@ -94,33 +99,29 @@
         <div class="drawer-content">
             <div class="line-btn active" data-line="all" onclick="selectLine('all')">
                 <div class="line-dot" style="background: var(--primary)"></div>
-                <div class="line-info"><div class="line-name">Toutes les lignes</div></div>
+                <div class="line-name">Toutes les lignes</div>
             </div>
             <div class="line-btn" data-line="1" onclick="selectLine('1')">
                 <div class="line-dot" style="background: var(--l1)"></div>
-                <div class="line-info"><div class="line-name">Ligne 1 : Arboisie / Mamie</div></div>
+                <div class="line-name">Ligne 1 : Arboisie / Mamie</div>
             </div>
             <div class="line-btn" data-line="2" onclick="selectLine('2')">
                 <div class="line-dot" style="background: var(--l2)"></div>
-                <div class="line-info"><div class="line-name">Ligne 2 : Village / Mamie</div></div>
+                <div class="line-name">Ligne 2 : Village / Mamie</div>
             </div>
             <div class="line-btn" data-line="3" onclick="selectLine('3')">
                 <div class="line-dot" style="background: var(--l3)"></div>
-                <div class="line-info"><div class="line-name">Ligne 3 : Rochebrune / Arbois</div></div>
+                <div class="line-name">Ligne 3 : Rochebrune / Arbois</div>
             </div>
         </div>
     </div>
 
     <div class="controls-bottom">
-        <button class="btn-focus" id="user-toggle" onclick="toggleUserCenter()">
-            <img src="images/user-focus.png" alt="User">
-        </button>
-        <button class="btn-focus" id="focus-toggle" onclick="toggleShuttleCenter()">
-            <img src="images/van.png" alt="Van">
-        </button>
+        <button class="btn-focus" id="user-toggle" onclick="toggleUserCenter()"><img src="images/user-focus.png"></button>
+        <button class="btn-focus" id="focus-toggle" onclick="toggleShuttleCenter()"><img src="images/van.png"></button>
     </div>
 
-    <div id="error-msg"><h3>FIN DE SERVICE</h3><p>Aucune navette n'est actuellement en ligne.</p></div>
+    <div id="error-msg"><h3>FIN DE SERVICE</h3><p>Aucune navette en ligne.</p></div>
     <div id="map"></div>
 
     <script>
@@ -134,9 +135,7 @@
         
         function selectLine(line) {
             selectedLine = line;
-            document.querySelectorAll('.line-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-line') === line);
-            });
+            document.querySelectorAll('.line-btn').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-line') === line));
             setTimeout(toggleDrawer, 300);
             handleLineChange();
         }
@@ -150,10 +149,15 @@
             { name: "L'Arboisie", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png" },
             { name: "Village", coords: [45.8575, 6.6206], icon: "images/logovillage.png" }
         ];
+        hotels.forEach(h => L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [45, 45] }) }).addTo(map));
 
-        hotels.forEach(h => {
-            L.marker(h.coords, { icon: L.icon({ iconUrl: h.icon, iconSize: [45, 45], iconAnchor: [22, 22] }) }).addTo(map);
-        });
+        function getLineColor(l) {
+            if (!l) return '#005587';
+            if (l.toString().includes('1')) return '#3498db';
+            if (l.toString().includes('2')) return '#9b59b6';
+            if (l.toString().includes('3')) return '#e67e22';
+            return '#005587';
+        }
 
         async function handleLineChange() {
             if (circuitLayer) map.removeLayer(circuitLayer);
@@ -166,10 +170,6 @@
             updatePositions();
         }
 
-        function getLineColor(l) {
-            if (l == '1') return '#3498db'; if (l == '2') return '#9b59b6'; if (l == '3') return '#e67e22'; return '#005587';
-        }
-
         async function updatePositions() {
             try {
                 const [resDev, resPos] = await Promise.all([
@@ -180,14 +180,14 @@
                 const positions = await resPos.json();
 
                 const activeOnes = devices.filter(d => !d.attributes.hideClient && (selectedLine === 'all' || (d.attributes.assignedLine && d.attributes.assignedLine.includes(selectedLine))));
-
                 document.getElementById('error-msg').style.display = activeOnes.length === 0 ? 'block' : 'none';
 
                 activeOnes.forEach(dev => {
                     const pos = positions.find(p => p.deviceId === dev.id);
                     if (!pos) return;
+
                     const latlng = [pos.latitude, pos.longitude];
-                    const lineColor = getLineColor(dev.attributes.assignedLine);
+                    const lineColor = getLineColor(dev.attributes.assignedLine); // RECUPERATION COULEUR
 
                     if (!shuttles[dev.id]) {
                         shuttles[dev.id] = L.marker(latlng).addTo(map).on('click', () => {
@@ -195,7 +195,16 @@
                             updateUIButtons(); map.flyTo(latlng, 17);
                         });
                     }
-                    const html = `<div class="navette-container ${followId === dev.id && autoCenterShuttle ? 'focused-shuttle' : ''}"><div class="direction-arrow" style="transform: rotate(${pos.course || 0}deg); border-bottom-color: ${lineColor}"></div><div class="bus-circle" style="border-color: ${lineColor}"><img src="images/van.png"></div></div>`;
+                    
+                    // MISE A JOUR DU HTML AVEC LA COULEUR DYNAMIQUE
+                    const html = `
+                        <div class="navette-container ${followId === dev.id && autoCenterShuttle ? 'focused-shuttle' : ''}">
+                            <div class="direction-arrow" style="transform: rotate(${pos.course || 0}deg); border-bottom-color: ${lineColor}"></div>
+                            <div class="bus-circle" style="border-color: ${lineColor}">
+                                <img src="images/van.png">
+                            </div>
+                        </div>`;
+
                     shuttles[dev.id].setLatLng(latlng).setIcon(L.divIcon({ html: html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] }));
                     if (followId === dev.id && autoCenterShuttle) map.panTo(latlng);
                 });
@@ -216,17 +225,9 @@
         map.locate({watch: true, enableHighAccuracy: true});
         map.on('dragstart', () => { autoCenterShuttle = false; autoCenterUser = false; updateUIButtons(); });
 
-        async function updateWeather() {
-            try {
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=45.85&longitude=6.62&current_weather=true`);
-                const data = await res.json();
-                document.getElementById('weather').innerText = `${Math.round(data.current_weather.temperature)}°C`;
-            } catch (e) {}
-        }
-
         setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 1000);
         setInterval(updatePositions, 4000);
-        handleLineChange(); updateWeather();
+        handleLineChange();
     </script>
 </body>
 </html>
