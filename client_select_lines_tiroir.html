@@ -69,10 +69,18 @@
             justify-content: center; z-index: 5; overflow: hidden; 
         }
         .bus-circle img { width: 22px !important; height: 22px !important; object-fit: contain; }
+        
+        /* Correction de l'indicateur de direction */
         .direction-arrow { 
-            position: absolute; width: 0; height: 0; 
-            border-left: 6px solid transparent; border-right: 6px solid transparent;
-            border-bottom: 10px solid var(--primary); top: -8px; z-index: 4; 
+            position: absolute; 
+            width: 0; height: 0; 
+            border-left: 7px solid transparent; 
+            border-right: 7px solid transparent;
+            border-bottom: 12px solid var(--primary); 
+            top: -10px; /* Ajusté pour être bien visible au dessus du cercle */
+            z-index: 10; 
+            transform-origin: center 32px; /* Centre de rotation sur le milieu du bus */
+            transition: transform 0.5s ease-in-out;
         }
         
         @keyframes pulse-border { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0.2); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(0,0,0,0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
@@ -190,6 +198,7 @@
                     if (!pos) return;
                     const latlng = [pos.latitude, pos.longitude];
                     const lineColor = getLineColor(dev.attributes.assignedLine);
+                    const heading = pos.course || 0;
 
                     if (!shuttles[dev.id]) {
                         shuttles[dev.id] = L.marker(latlng).addTo(map).on('click', () => {
@@ -200,7 +209,7 @@
                     
                     const html = `
                         <div class="navette-container ${followId === dev.id && autoCenterShuttle ? 'focused-shuttle' : ''}">
-                            <div class="direction-arrow" style="transform: rotate(${pos.course || 0}deg); border-bottom-color: ${lineColor}"></div>
+                            <div class="direction-arrow" style="transform: rotate(${heading}deg); border-bottom-color: ${lineColor}"></div>
                             <div class="bus-circle" style="border-color: ${lineColor}">
                                 <img src="images/van.png">
                             </div>
@@ -233,13 +242,12 @@
                 const temp = Math.round(data.current_weather.temperature);
                 const code = data.current_weather.weathercode;
                 
-                // Map codes Open-Meteo vers icônes simples
-                let iconUrl = "https://openweathermap.org/img/wn/01d.png"; // Default sun
-                if (code >= 1 && code <= 3) iconUrl = "https://openweathermap.org/img/wn/02d.png"; // Partly cloudy
-                if (code >= 45 && code <= 48) iconUrl = "https://openweathermap.org/img/wn/50d.png"; // Fog
-                if (code >= 51 && code <= 67) iconUrl = "https://openweathermap.org/img/wn/10d.png"; // Rain
-                if (code >= 71 && code <= 77) iconUrl = "https://openweathermap.org/img/wn/13d.png"; // Snow
-                if (code >= 80) iconUrl = "https://openweathermap.org/img/wn/09d.png"; // Showers
+                let iconUrl = "https://openweathermap.org/img/wn/01d.png";
+                if (code >= 1 && code <= 3) iconUrl = "https://openweathermap.org/img/wn/02d.png";
+                if (code >= 45 && code <= 48) iconUrl = "https://openweathermap.org/img/wn/50d.png";
+                if (code >= 51 && code <= 67) iconUrl = "https://openweathermap.org/img/wn/10d.png";
+                if (code >= 71 && code <= 77) iconUrl = "https://openweathermap.org/img/wn/13d.png";
+                if (code >= 80) iconUrl = "https://openweathermap.org/img/wn/09d.png";
 
                 document.getElementById('weather').innerText = `${temp}°C`;
                 const img = document.getElementById('weather-icon');
