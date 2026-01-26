@@ -35,12 +35,10 @@
         .shuttle-card { width: 280px; min-width: 280px; background: #fff; border-radius: 12px; border: 2px solid #eee; position: relative; overflow: hidden; display: flex; flex-direction: column; }
         .card-active { border: 2px solid var(--success) !important; }
         
-        /* --- BANDEAU STATUT BAS --- */
         .status-bar { font-size: 10px; font-weight: bold; text-align: center; padding: 4px 0; text-transform: uppercase; color: white; letter-spacing: 1px; margin-top: auto; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         .status-blink { animation: blink 1s infinite; }
 
-        /* Animation pour le fond de l'icône sur la carte */
         @keyframes blink-bg {
             0% { background-color: white; }
             50% { background-color: var(--status-color); }
@@ -66,6 +64,11 @@
 
         #pin-overlay { position: fixed; inset: 0; background: #1a1a1a; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
         .num-btn { width: 75px; height: 75px; border-radius: 50%; border: none; background: #333; color: white; font-size: 24px; cursor: pointer; margin: 5px; }
+
+        /* Nouveaux styles pour batterie et connexion */
+        .device-meta { font-size: 11px; display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+        .status-online { color: var(--success); font-weight: bold; }
+        .status-offline { color: var(--danger); font-weight: bold; }
     </style>
 </head>
 <body>
@@ -279,6 +282,10 @@
                         const pos = positions.find(p => p.deviceId === dev.id);
                         if(pos) updateMarker(dev, pos, color);
 
+                        // Récupération batterie et état de connexion
+                        const batt = (pos && pos.attributes.batteryLevel) ? pos.attributes.batteryLevel + "%" : "--%";
+                        const isOnline = (dev.status === "online");
+
                         let statusColor = "var(--success)";
                         let isBlinking = "";
                         if (status.includes("Trafic")) { statusColor = "var(--warning)"; isBlinking = "status-blink"; }
@@ -291,7 +298,13 @@
                                 <div style="height:6px; background:${color}"></div>
                                 <div style="padding:10px; flex-grow:1;">
                                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <b>${dev.name}</b>
+                                        <div>
+                                            <b style="font-size:15px">${dev.name}</b>
+                                            <div class="device-meta">
+                                                <span>🔋 ${batt}</span>
+                                                <span class="${isOnline?'status-online':'status-offline'}">${isOnline?'● Connecté':'○ Déconnecté'}</span>
+                                            </div>
+                                        </div>
                                         <label class="switch"><input type="checkbox" ${active?'checked':''} onchange="toggleDev(${dev.id}, this.checked)"><span class="slider"></span></label>
                                     </div>
                                     <div class="v-details">
@@ -318,7 +331,6 @@
             const m = fleetMarkers[dev.id];
             m.setLatLng([pos.latitude, pos.longitude]);
 
-            // Détermination de la couleur de statut pour le clignotement de fond
             const status = dev.attributes.driverStatus || "En service";
             let statusColor = ""; 
             let blinkClass = "";
