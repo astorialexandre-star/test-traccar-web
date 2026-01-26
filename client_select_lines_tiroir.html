@@ -11,7 +11,7 @@
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', Roboto, sans-serif; background: #f4f7f6; }
         #map { height: 100vh; width: 100%; z-index: 1; }
 
-        /* NOUVELLE BANNIERE SUPERIEURE STYLE "DIRECT" */
+        /* BANNIERE SUPERIEURE STYLE "DIRECT" */
         .live-header {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
             z-index: 1000; background: white; width: 85%; max-width: 400px;
@@ -19,12 +19,12 @@
             justify-content: space-between; padding: 0 20px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05);
         }
-        .live-badge { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; }
+        .live-badge { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; color: #000; }
         .live-dot { width: 8px; height: 8px; background: var(--live); border-radius: 50%; animation: blink 1s infinite; }
-        .live-time { font-weight: 400; color: #333; margin-left: 5px; }
+        .live-time { font-weight: 400; color: #666; margin-left: 5px; }
         
-        .weather-3d { display: flex; align-items: center; gap: 5px; font-weight: 600; color: #444; }
-        .weather-icon-3d { width: 32px; height: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+        .weather-3d { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #333; font-size: 16px; }
+        .weather-icon-3d { width: 35px; height: 35px; object-fit: contain; }
 
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
@@ -55,7 +55,7 @@
         .btn-focus { 
             width: 50px; height: 50px; background: white; border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: none; cursor: pointer;
         }
         .btn-focus img { width: 24px; height: 24px; opacity: 0.7; }
         .btn-focus.active { background: var(--primary); }
@@ -84,7 +84,7 @@
             DIRECT <span class="live-time" id="current-time">--:--</span>
         </div>
         <div class="weather-3d">
-            <img id="weather-icon-3d" class="weather-icon-3d" src="" style="display:none">
+            <img id="weather-icon-3d" class="weather-icon-3d" src="">
             <span id="weather">--°</span>
         </div>
     </div>
@@ -129,11 +129,12 @@
         let shuttles = {}, followId = null, autoCenterShuttle = false, autoCenterUser = false;
 
         function toggleDrawer() { document.getElementById('line-drawer').classList.toggle('open'); }
+        
         function selectLine(line) {
             selectedLine = line;
             document.querySelectorAll('.line-btn').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-line') === line));
             setTimeout(toggleDrawer, 300);
-            handleLineChange();
+            handleLineChange(); // RE-AJOUTÉ ICI
         }
 
         map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
@@ -153,6 +154,20 @@
             if (l.toString().includes('2')) return '#9b59b6';
             if (l.toString().includes('3')) return '#e67e22';
             return '#005587';
+        }
+
+        // FONCTION RE-AJOUTÉE POUR LE JSON
+        async function handleLineChange() {
+            if (circuitLayer) map.removeLayer(circuitLayer);
+            const file = selectedLine === 'all' ? 'circuit.json' : `ligne${selectedLine}.json`;
+            try {
+                const res = await fetch(file);
+                const data = await res.json();
+                circuitLayer = L.geoJSON(data, { 
+                    style: { color: getLineColor(selectedLine), weight: 5, opacity: 0.4 } 
+                }).addTo(map);
+            } catch(e) { console.error("Erreur JSON:", e); }
+            updatePositions();
         }
 
         async function updatePositions() {
@@ -202,29 +217,18 @@
                 const data = await res.json();
                 const code = data.current_weather.weathercode;
                 
-                // Utilisation d'icônes météo 3D (Fluent Emoji / Microsoft Style)
-                let iconId = "1d"; 
-                if (code >= 1 && code <= 3) iconId = "02d"; 
-                if (code >= 51 && code <= 67) iconId = "10d";
-                if (code >= 71 && code <= 77) iconId = "13d";
-                
-                // Source d'icônes 3D qualitatifs
-                const iconUrl = `https://raw.githubusercontent.com/basmilius/weather-icons/dev/production/fill/all/${getWeatherIconName(code)}.svg`;
+                // Correction du lien vers l'icône météo 3D
+                const weatherMap = {
+                    0: "clear-day", 1: "partly-cloudy-day", 2: "partly-cloudy-day", 3: "overcast-day",
+                    45: "fog-day", 48: "fog-day", 51: "rain", 61: "rain", 71: "snow", 80: "rain"
+                };
+                const iconName = weatherMap[code] || "cloudy";
+                const iconUrl = `https://raw.githubusercontent.com/basmilius/weather-icons/dev/production/fill/all/${iconName}.svg`;
 
                 document.getElementById('weather').innerText = `${Math.round(data.current_weather.temperature)}°`;
                 const img = document.getElementById('weather-icon-3d');
                 img.src = iconUrl;
-                img.style.display = "block";
             } catch (e) {}
-        }
-
-        function getWeatherIconName(code) {
-            if (code === 0) return "clear-day";
-            if (code <= 3) return "partly-cloudy-day";
-            if (code <= 48) return "fog";
-            if (code <= 67) return "rain";
-            if (code <= 77) return "snow";
-            return "cloudy";
         }
 
         function toggleUserCenter() { autoCenterUser = !autoCenterUser; if (autoCenterUser) autoCenterShuttle = false; updateUIButtons(); if (autoCenterUser && userMarker) map.panTo(userMarker.getLatLng()); }
@@ -242,7 +246,10 @@
         setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 1000);
         setInterval(updatePositions, 4000);
         setInterval(updateWeather, 600000);
-        updateWeather(); updatePositions();
+        
+        // INITIALISATION CORRECTE
+        updateWeather(); 
+        handleLineChange(); 
     </script>
 </body>
 </html>
