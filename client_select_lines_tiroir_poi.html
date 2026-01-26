@@ -29,6 +29,17 @@
 
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
+        /* EFFET PULSE POUR LA NAVETTE SUIVIE */
+        @keyframes pulse-focus {
+            0% { box-shadow: 0 0 0 0 rgba(0, 85, 135, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(0, 85, 135, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 85, 135, 0); }
+        }
+        .focused-shuttle .bus-circle {
+            animation: pulse-focus 2s infinite;
+            border-width: 4px;
+        }
+
         /* ARRÊTS / POI */
         .poi-container { display: flex; flex-direction: column; align-items: center; }
         .poi-icon {
@@ -54,14 +65,14 @@
         .line-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 15px; }
 
         .controls-bottom { position: absolute; bottom: 85px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
-        .btn-focus { width: 50px; height: 50px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: none; }
+        .btn-focus { width: 50px; height: 50px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: none; cursor: pointer;}
         .btn-focus img { width: 24px; opacity: 0.6; }
         .btn-focus.active { background: var(--primary); }
         .btn-focus.active img { filter: brightness(0) invert(1); opacity: 1; }
 
         /* NAVETTE */
         .navette-container { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
-        .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid var(--primary); z-index: 5; display: flex; align-items: center; justify-content: center; }
+        .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid var(--primary); z-index: 5; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
         .bus-circle img { width: 20px !important; }
         .direction-arrow { position: absolute; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid var(--primary); top: -12px; z-index: 4; transform-origin: 50% 34px; transition: transform 0.4s ease; }
         .user-dot { width: 14px; height: 14px; background: #3498db; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(52,152,219,0.5); }
@@ -162,10 +173,30 @@
                     const pos = positions.find(p => p.deviceId === dev.id);
                     if (!pos) return;
                     const latlng = [pos.latitude, pos.longitude], lineColor = getLineColor(dev.attributes.assignedLine);
-                    if (!shuttles[dev.id]) shuttles[dev.id] = L.marker(latlng).addTo(map).on('click', () => { followId = dev.id; autoCenterShuttle = true; autoCenterUser = false; updateUIButtons(); map.flyTo(latlng, 17); });
-                    const html = `<div class="navette-container"><div class="direction-arrow" style="transform: rotate(${pos.course || 0}deg); border-bottom-color: ${lineColor}"></div><div class="bus-circle" style="border-color: ${lineColor}"><img src="images/van.png"></div></div>`;
+                    
+                    if (!shuttles[dev.id]) {
+                        shuttles[dev.id] = L.marker(latlng).addTo(map).on('click', () => { 
+                            followId = dev.id; 
+                            autoCenterShuttle = true; 
+                            autoCenterUser = false; 
+                            updateUIButtons(); 
+                            map.flyTo(latlng, 17); 
+                        });
+                    }
+                    
+                    // AJOUT DE LA CLASSE FOCUSED SI LA NAVETTE EST SUIVIE
+                    const isFocused = (followId === dev.id && autoCenterShuttle);
+                    
+                    const html = `
+                        <div class="navette-container ${isFocused ? 'focused-shuttle' : ''}">
+                            <div class="direction-arrow" style="transform: rotate(${pos.course || 0}deg); border-bottom-color: ${lineColor}"></div>
+                            <div class="bus-circle" style="border-color: ${lineColor}">
+                                <img src="images/van.png">
+                            </div>
+                        </div>`;
+
                     shuttles[dev.id].setLatLng(latlng).setIcon(L.divIcon({ html: html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] }));
-                    if (followId === dev.id && autoCenterShuttle) map.panTo(latlng);
+                    if (isFocused) map.panTo(latlng);
                 });
                 Object.keys(shuttles).forEach(id => { if (!activeOnes.find(d => d.id == id)) { map.removeLayer(shuttles[id]); delete shuttles[id]; } });
             } catch (e) {}
@@ -184,7 +215,16 @@
         }
 
         function toggleUserCenter() { autoCenterUser = !autoCenterUser; autoCenterShuttle = false; updateUIButtons(); }
-        function toggleShuttleCenter() { autoCenterShuttle = !autoCenterShuttle; autoCenterUser = false; updateUIButtons(); }
+        function toggleShuttleCenter() { 
+            if (!followId) {
+                const keys = Object.keys(shuttles);
+                if (keys.length > 0) followId = parseInt(keys[0]);
+            }
+            autoCenterShuttle = !autoCenterShuttle; 
+            autoCenterUser = false; 
+            updateUIButtons(); 
+            updatePositions(); // Forcer la mise à jour pour l'effet pulse
+        }
         function updateUIButtons() { document.getElementById('user-toggle').classList.toggle('active', autoCenterUser); document.getElementById('focus-toggle').classList.toggle('active', autoCenterShuttle); }
 
         map.on('locationfound', (e) => {
@@ -193,7 +233,7 @@
             if (autoCenterUser) map.panTo(e.latlng);
         });
         map.locate({watch: true, enableHighAccuracy: true});
-        map.on('dragstart', () => { autoCenterShuttle = false; autoCenterUser = false; updateUIButtons(); });
+        map.on('dragstart', () => { autoCenterShuttle = false; autoCenterUser = false; updateUIButtons(); updatePositions(); });
 
         setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }, 1000);
         setInterval(updatePositions, 4000);
