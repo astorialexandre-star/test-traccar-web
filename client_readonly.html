@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-marker-slide-to@latest/dist/Leaflet.Marker.SlideTo.js"></script>
+    
     <style>
         :root { --primary: #005587; --l1: #3498db; --l2: #9b59b6; --l3: #e67e22; --live: #e74c3c; }
         body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', Roboto, sans-serif; background: #f4f7f6; }
@@ -156,8 +158,6 @@
                 const res = await fetch(selectedLine === 'all' ? 'circuit.json' : `ligne${selectedLine}.json`);
                 const data = await res.json();
                 circuitLayer = L.geoJSON(data, { style: { color: getLineColor(selectedLine), weight: 6, opacity: 0.5 } }).addTo(map);
-                
-                // AJUSTEMENT DU ZOOM SUR LA LIGNE
                 const bounds = circuitLayer.getBounds();
                 if (bounds.isValid()) {
                     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
@@ -180,13 +180,6 @@
                     if (!pos) return;
                     const latlng = [pos.latitude, pos.longitude], lineColor = getLineColor(dev.attributes.assignedLine);
                     
-                    if (!shuttles[dev.id]) {
-                        shuttles[dev.id] = L.marker(latlng).addTo(map).on('click', () => { 
-                            followId = dev.id; autoCenterShuttle = true; autoCenterUser = false; 
-                            updateUIButtons(); map.flyTo(latlng, 17); 
-                        });
-                    }
-                    
                     const isFocused = (followId === dev.id && autoCenterShuttle);
                     const html = `
                         <div class="navette-container ${isFocused ? 'focused-shuttle' : ''}">
@@ -196,7 +189,19 @@
                             </div>
                         </div>`;
 
-                    shuttles[dev.id].setLatLng(latlng).setIcon(L.divIcon({ html: html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] }));
+                    if (!shuttles[dev.id]) {
+                        shuttles[dev.id] = L.marker(latlng, {
+                            icon: L.divIcon({ html: html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] })
+                        }).addTo(map).on('click', () => { 
+                            followId = dev.id; autoCenterShuttle = true; autoCenterUser = false; 
+                            updateUIButtons(); map.flyTo(latlng, 17); 
+                        });
+                    } else {
+                        // Utilisation du plugin pour un déplacement fluide (3000ms de transition pour un intervalle de 4000ms)
+                        shuttles[dev.id].slideTo(latlng, { duration: 3000 });
+                        shuttles[dev.id].setIcon(L.divIcon({ html: html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] }));
+                    }
+                    
                     if (isFocused) map.panTo(latlng);
                 });
                 Object.keys(shuttles).forEach(id => { if (!activeOnes.find(d => d.id == id)) { map.removeLayer(shuttles[id]); delete shuttles[id]; } });
