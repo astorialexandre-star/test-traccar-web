@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Arrêts Dynamiques - 369 Shuttles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root { --primary: #005587; }
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; background: #f4f7f6; }
+
+        /* Style des Arrêts (POI) */
+        .poi-container { display: flex; flex-direction: column; align-items: center; }
+        .poi-icon {
+            width: 32px; height: 32px; background: white; border: 2.5px solid var(--primary);
+            border-radius: 50%; padding: 3px; box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+            object-fit: contain; transition: transform 0.2s;
+        }
+        
+        /* Label Dynamique : Caché par défaut */
+        .poi-label {
+            background: var(--primary); color: white; font-size: 10px; font-weight: 800;
+            padding: 2px 8px; border-radius: 4px; margin-top: -5px; z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); text-transform: uppercase;
+            display: none; white-space: nowrap;
+        }
+
+        /* Affichage du label si le zoom est >= 16 */
+        .zoom-detail .poi-label { display: block; }
+        .zoom-detail .poi-icon { transform: scale(1.1); }
+
+        /* Style des Popups */
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 5px; }
+        .popup-hotel { text-align: center; }
+        .popup-hotel h3 { margin: 5px 0; color: var(--primary); font-size: 16px; }
+        .btn-call { 
+            display: block; background: var(--primary); color: white !important; 
+            text-decoration: none; padding: 8px; border-radius: 8px; 
+            margin-top: 10px; font-size: 12px; font-weight: bold; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script>
+        const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        const hotels = [
+            { name: "MAMIE", coords: [45.8593, 6.6291], icon: "images/logomamiemegeve.png", tel: "+33450213000" },
+            { name: "ARBOIS", coords: [45.8542, 6.6317], icon: "images/logomontdarbois.png", tel: "+33450212503" },
+            { name: "ARBOISIE", coords: [45.8586, 6.6276], icon: "images/logolarboisie.png", tel: "+33450213122" },
+            { name: "VILLAGE", coords: [45.8575, 6.6206], icon: "images/logovillage.png", tel: "+33450212503" }
+        ];
+
+        // 1. Gestion des Arrêts avec Popup et Z-Index bas
+        hotels.forEach(h => {
+            const hotelIcon = L.divIcon({
+                className: 'hotel-marker', // Classe de base
+                html: `<div class="poi-container"><img src="${h.icon}" class="poi-icon"><div class="poi-label">${h.name}</div></div>`,
+                iconSize: [40, 50], iconAnchor: [20, 25]
+            });
+
+            const popupContent = `
+                <div class="popup-hotel">
+                    <img src="${h.icon}" style="width:50px">
+                    <h3>Hôtel ${h.name}</h3>
+                    <p style="font-size:12px; color: #666;">Point d'arrêt officiel</p>
+                    <a href="tel:${h.tel}" class="btn-call">Appeler la Réception</a>
+                </div>`;
+
+            L.marker(h.coords, { 
+                icon: hotelIcon,
+                zIndexOffset: -500 // S'assure que les navettes passent devant
+            })
+            .bindPopup(popupContent)
+            .addTo(map);
+        });
+
+        // 2. Gestion Dynamique du Label selon le Zoom
+        map.on('zoomend', function() {
+            const currentZoom = map.getZoom();
+            const container = map.getContainer();
+            if (currentZoom >= 16) {
+                container.classList.add('zoom-detail');
+            } else {
+                container.classList.remove('zoom-detail');
+            }
+        });
+
+        // 3. Chargement des tracés JSON (Reprise de votre logique)
+        async function loadCircuit() {
+            try {
+                const res = await fetch('circuit.json');
+                const data = await res.json();
+                L.geoJSON(data, { 
+                    style: { color: '#005587', weight: 4, opacity: 0.3, dashArray: '5, 10' } 
+                }).addTo(map);
+            } catch(e) { console.log("Fichier circuit.json non trouvé pour le test."); }
+        }
+
+        loadCircuit();
+    </script>
+</body>
+</html>
