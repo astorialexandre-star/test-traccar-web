@@ -2,104 +2,59 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>DEMO Corrigée - Suivi Fluide Navettes</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DEMO - Test Mouvement Fluide</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-marker-slide-to@latest/dist/Leaflet.Marker.SlideTo.js"></script>
+    <script src="https://unpkg.com/leaflet-marker-slideto@1.0.0/leaflet-marker-slideto.js"></script>
     
     <style>
-        :root { --primary: #005587; }
-        body { margin: 0; padding: 0; font-family: sans-serif; }
         #map { height: 100vh; width: 100%; }
-        
-        /* Correction de la taille des icônes */
         .navette-container { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
-        .bus-circle { 
-            width: 34px; 
-            height: 34px; 
-            background: white; 
-            border-radius: 50%; 
-            border: 3px solid var(--primary); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
-            overflow: hidden; /* Empêche l'image de déborder */
-        }
-        
-        /* C'est ici qu'on force la taille de l'image interne */
-        .bus-circle img { 
-            width: 20px !important; 
-            height: 20px !important; 
-            object-fit: contain;
-        }
-
-        .direction-arrow { 
-            position: absolute; 
-            width: 0; 
-            height: 0; 
-            border-left: 6px solid transparent; 
-            border-right: 6px solid transparent; 
-            border-bottom: 10px solid var(--primary); 
-            top: -12px; 
-            transition: transform 0.4s ease; 
-        }
-        
-        .demo-overlay { position: absolute; top: 20px; left: 20px; z-index: 1000; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); max-width: 250px; }
+        .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid #005587; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .bus-circle img { width: 20px !important; height: 20px !important; }
     </style>
 </head>
 <body>
-
-    <div class="demo-overlay">
-        <h3 style="margin:0 0 10px 0">Mode Démo Corrigé</h3>
-        <p style="font-size: 12px; color: #666;">Les icônes sont maintenant à la bonne taille (44px) avec un mouvement fluide.</p>
-        <div id="status" style="font-weight: bold; color: green;">Simulation en cours...</div>
-    </div>
-
     <div id="map"></div>
-
     <script>
-        const map = L.map('map', { zoomControl: false }).setView([45.8590, 6.6285], 15);
+        const map = L.map('map').setView([45.8590, 6.6285], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        let shuttles = {};
-        const fakeDevices = [
-            { id: 101, name: "Ligne 1", color: "#3498db", lat: 45.8590, lng: 6.6285 },
-            { id: 102, name: "Ligne 2", color: "#9b59b6", lat: 45.8540, lng: 6.6310 }
-        ];
+        // VERIFICATION DANS LA CONSOLE
+        if (L.Marker.prototype.slideTo) {
+            console.log("✅ Plugin SlideTo chargé avec succès !");
+        } else {
+            console.error("❌ Plugin SlideTo NON détecté.");
+        }
 
-        function updateFakePositions() {
-            fakeDevices.forEach(dev => {
-                // Déplacement aléatoire
-                dev.lat += (Math.random() - 0.5) * 0.0015;
-                dev.lng += (Math.random() - 0.5) * 0.0015;
-                
-                const latlng = [dev.lat, dev.lng];
-                const angle = Math.floor(Math.random() * 360);
+        let shuttle;
+        const startPos = [45.8590, 6.6285];
 
-                const html = `
-                    <div class="navette-container">
-                        <div class="direction-arrow" style="transform: rotate(${angle}deg); border-bottom-color: ${dev.color}"></div>
-                        <div class="bus-circle" style="border-color: ${dev.color}">
-                            <img src="https://cdn-icons-png.flaticon.com/512/3448/3448339.png"> 
-                        </div>
-                    </div>`;
+        function move() {
+            // On génère une position aléatoire proche
+            const nextPos = [
+                45.8590 + (Math.random() - 0.5) * 0.01,
+                6.6285 + (Math.random() - 0.5) * 0.01
+            ];
 
-                const customIcon = L.divIcon({ html: html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] });
+            const html = `<div class="navette-container"><div class="bus-circle"><img src="https://cdn-icons-png.flaticon.com/512/3448/3448339.png"></div></div>`;
+            const icon = L.divIcon({ html: html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] });
 
-                if (!shuttles[dev.id]) {
-                    shuttles[dev.id] = L.marker(latlng, { icon: customIcon }).addTo(map);
-                } else {
-                    // Application du glissement fluide
-                    shuttles[dev.id].slideTo(latlng, { duration: 3000 });
-                    shuttles[dev.id].setIcon(customIcon);
-                }
+            if (!shuttle) {
+                shuttle = L.marker(startPos, { icon: icon }).addTo(map);
+            }
+
+            // Déclenchement du mouvement fluide
+            console.log("Déplacement vers :", nextPos);
+            shuttle.slideTo(nextPos, {
+                duration: 3000,
+                keepAtCenter: false
             });
         }
 
-        updateFakePositions();
-        setInterval(updateFakePositions, 4000);
+        // Exécuter immédiatement puis toutes les 4 secondes
+        move();
+        setInterval(move, 4000);
     </script>
 </body>
 </html>
