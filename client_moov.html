@@ -2,81 +2,49 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>DEMO FINAL - Mouvement Fluide</title>
+    <title>DEMO ULTRA-ROBUSTE - 369 Shuttles</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/leaflet-marker-slideto@1.0.0/leaflet-marker-slideto.min.js"></script>
-    
     <style>
-        #map { height: 100vh; width: 100%; background: #eee; }
+        #map { height: 100vh; width: 100%; }
         .navette-container { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
-        .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid #005587; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        .bus-circle img { width: 22px !important; height: 22px !important; }
-        .info-box { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-family: sans-serif; }
+        .bus-circle { width: 34px; height: 34px; background: white; border-radius: 50%; border: 3px solid #005587; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3); overflow: hidden; }
+        .bus-circle img { width: 22px !important; height: 22px !important; object-fit: contain; }
     </style>
 </head>
 <body>
 
-    <div class="info-box">
-        <b>Statut :</b> <span id="debug-status">Initialisation...</span>
-    </div>
     <div id="map"></div>
 
     <script>
-        // 1. Initialisation de la carte
+        /* --- CODE DU PLUGIN INTEGRÉ POUR ÉVITER LES ERREURS DE CHARGEMENT --- */
+        (function(){var t=L.Marker.prototype.setLatLng;L.Marker.include({slideTo:function(e,i){if(this._map){this._slideFromLatLng=this.getLatLng(),this._slideToLatLng=L.latLng(e),this._slideDuration=i.duration,this._slideKeepAtCenter=!!i.keepAtCenter,this._slideStartTime=Date.now(),this._slide();return this}},_slide:function(){if(this._map){var e=(Date.now()-this._slideStartTime)/this._slideDuration;if(e>=1){this.setLatLng(this._slideToLatLng),this.fire("moveend");return}var i=L.latLng(this._slideFromLatLng.lat+(this._slideToLatLng.lat-this._slideFromLatLng.lat)*e,this._slideFromLatLng.lng+(this._slideToLatLng.lng-this._slideFromLatLng.lng)*e);this.setLatLng(i),this._slideKeepAtCenter&&this._map.panTo(i),L.Util.requestAnimFrame(this._slide,this)}}})})();
+        /* --- FIN DU PLUGIN --- */
+
+        // Initialisation Carte
         const map = L.map('map').setView([45.8590, 6.6285], 16);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // 2. Vérification immédiate du plugin
-        const statusEl = document.getElementById('debug-status');
-        if (L.Marker.prototype.slideTo) {
-            statusEl.innerText = "✅ Plugin chargé. Animation prête.";
-            statusEl.style.color = "green";
-        } else {
-            statusEl.innerText = "❌ Plugin non chargé. Vérifiez l'URL.";
-            statusEl.style.color = "red";
-        }
-
-        // 3. Création du marqueur (une seule fois)
-        const htmlIcon = `
-            <div class="navette-container">
-                <div class="bus-circle">
-                    <img src="https://cdn-icons-png.flaticon.com/512/3448/3448339.png">
-                </div>
-            </div>`;
-        
-        const myIcon = L.divIcon({ 
-            html: htmlIcon, 
-            className: '', 
-            iconSize: [44, 44], 
-            iconAnchor: [22, 22] 
+        // Création du bus
+        const icon = L.divIcon({ 
+            html: '<div class="navette-container"><div class="bus-circle"><img src="https://cdn-icons-png.flaticon.com/512/3448/3448339.png"></div></div>', 
+            className: '', iconSize: [44, 44], iconAnchor: [22, 22] 
         });
+        const shuttle = L.marker([45.8590, 6.6285], { icon: icon }).addTo(map);
 
-        // On place le bus au centre au début
-        const shuttle = L.marker([45.8590, 6.6285], { icon: myIcon }).addTo(map);
-
-        // 4. Fonction de mouvement cyclique
-        function startSimulation() {
-            // On calcule une nouvelle position aléatoire dans un rayon de 200m
-            const newLat = 45.8590 + (Math.random() - 0.5) * 0.005;
-            const newLng = 6.6285 + (Math.random() - 0.5) * 0.005;
-            const destination = [newLat, newLng];
-
-            console.log("Départ vers :", destination);
-
-            // UTILISATION DE SLIDETO
-            // duration: 3500ms (le mouvement dure 3.5s)
-            shuttle.slideTo(destination, {
-                duration: 3500,
-                keepAtCenter: false
-            });
+        // Simulation de mouvement
+        function simulate() {
+            const nextPos = [
+                45.8590 + (Math.random() - 0.5) * 0.006,
+                6.6285 + (Math.random() - 0.5) * 0.006
+            ];
+            // On fait glisser le bus pendant 3.5 secondes
+            shuttle.slideTo(nextPos, { duration: 3500 });
         }
 
-        // On lance le mouvement toutes les 4 secondes
-        setInterval(startSimulation, 4000);
-        startSimulation(); // Premier lancement immédiat
-
+        setInterval(simulate, 4000);
+        simulate();
     </script>
 </body>
 </html>
